@@ -450,6 +450,7 @@ export default function NewListing() {
         status:                   'open',
         token_contract_address:   mintTxHash ?? null,
         description:              s1.description,
+        featured:                 false,
       })
     },
     onSuccess: async (listing) => {
@@ -531,6 +532,7 @@ export default function NewListing() {
     status:                  'open',
     token_contract_address:  null,
     description:             s1?.description ?? 'Premium quality crop offering competitive investor returns.',
+    featured:                false,
     created_at:              new Date().toISOString(),
   }
 

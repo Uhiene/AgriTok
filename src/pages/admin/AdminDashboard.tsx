@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { format, subDays, startOfDay } from 'date-fns'
 import {
   Users,
@@ -8,6 +9,7 @@ import {
   ShieldAlert,
   Leaf,
   Clock,
+  ArrowRight,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -47,10 +49,12 @@ async function getAdminStats() {
   const pendingKYC     = farmers.filter((p) => p.kyc_status === 'pending').length
   const totalVolume    = investments.reduce((s: number, i: { amount_paid_usd: number }) => s + Number(i.amount_paid_usd), 0)
   const pendingHarvest = harvests.filter((h: { verified_by: string | null }) => !h.verified_by).length
+  const totalPaidOut   = investments.filter((i: { status: string }) => i.status === 'paid_out')
+    .reduce((s: number, i: { amount_paid_usd: number }) => s + Number(i.amount_paid_usd), 0)
 
-  // ── Registrations per day (last 14 days) ───────────────────
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = startOfDay(subDays(new Date(), 13 - i))
+  // ── Registrations per day (last 30 days) ───────────────────
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = startOfDay(subDays(new Date(), 29 - i))
     return { date: format(d, 'MMM d'), ts: d.getTime(), farmers: 0, investors: 0 }
   })
 
@@ -89,10 +93,12 @@ async function getAdminStats() {
     .slice(0, 8)
 
   return {
+    totalUsers:     profiles.length,
     totalFarmers:   farmers.length,
     totalInvestors: investors.length,
     totalListings:  listings.length,
     totalVolume,
+    totalPaidOut,
     pendingKYC,
     pendingHarvest,
     registrationChart: days,
@@ -160,6 +166,7 @@ export default function AdminDashboard() {
     queryFn:  getAdminStats,
     staleTime: 1000 * 60 * 2,
   })
+  const navigate = useNavigate()
 
   return (
     <div className="px-4 py-6 max-w-5xl mx-auto space-y-8">
@@ -174,9 +181,16 @@ export default function AdminDashboard() {
       {/* ── Stats ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
+          label="Total Users"
+          value={data?.totalUsers ?? 0}
+          icon={Users}
+          accent="bg-forest-mid/10"
+          loading={isLoading}
+        />
+        <StatCard
           label="Total Farmers"
           value={data?.totalFarmers ?? 0}
-          icon={Users}
+          icon={Sprout}
           accent="bg-accent-green/10"
           loading={isLoading}
           badge={data?.pendingKYC}
@@ -189,39 +203,82 @@ export default function AdminDashboard() {
           loading={isLoading}
         />
         <StatCard
-          label="Crop Listings"
-          value={data?.totalListings ?? 0}
-          icon={Sprout}
-          accent="bg-gold/15"
-          loading={isLoading}
-        />
-        <StatCard
-          label="Total Volume (USD)"
+          label="Total Raised (USD)"
           value={isLoading ? '—' : `$${(data?.totalVolume ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
           icon={DollarSign}
           accent="bg-accent-green/10"
           loading={isLoading}
         />
         <StatCard
-          label="Pending KYC Reviews"
-          value={data?.pendingKYC ?? 0}
-          icon={ShieldAlert}
-          accent="bg-red-50"
+          label="Total Paid Out (USD)"
+          value={isLoading ? '—' : `$${(data?.totalPaidOut ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+          icon={DollarSign}
+          accent="bg-gold/15"
           loading={isLoading}
         />
         <StatCard
-          label="Pending Harvest Verifications"
-          value={data?.pendingHarvest ?? 0}
+          label="Crop Listings"
+          value={data?.totalListings ?? 0}
           icon={Leaf}
           accent="bg-amber-50"
           loading={isLoading}
         />
       </div>
 
+      {/* ── Pending Actions ─────────────────────────────── */}
+      <section>
+        <h2 className="font-body text-base font-semibold text-forest-dark mb-4">
+          Pending Actions
+        </h2>
+        <div className="bg-white rounded-card shadow-card divide-y divide-[rgba(13,43,30,0.06)]">
+          {[
+            {
+              label:       'KYC Reviews Pending',
+              count:       data?.pendingKYC ?? 0,
+              icon:        ShieldAlert,
+              color:       'bg-red-50',
+              iconColor:   'text-red-400',
+              href:        '/admin/kyc',
+              urgent:      (data?.pendingKYC ?? 0) > 0,
+            },
+            {
+              label:       'Harvest Reports Pending Verification',
+              count:       data?.pendingHarvest ?? 0,
+              icon:        Leaf,
+              color:       'bg-amber-50',
+              iconColor:   'text-amber-500',
+              href:        '/admin/harvest',
+              urgent:      (data?.pendingHarvest ?? 0) > 0,
+            },
+          ].map((action) => (
+            <button
+              key={action.href}
+              onClick={() => navigate(action.href)}
+              className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-forest-dark/[0.02] transition-colors text-left"
+            >
+              <div className={`w-9 h-9 rounded-card flex items-center justify-center flex-shrink-0 ${action.color}`}>
+                <action.icon size={15} className={action.iconColor} strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-body text-sm text-forest-dark">{action.label}</p>
+                {isLoading ? (
+                  <Skeleton className="h-3 w-16 mt-1" />
+                ) : (
+                  <p className={`font-body text-xs mt-0.5 ${action.urgent ? 'text-red-400 font-semibold' : 'text-text-muted'}`}>
+                    {action.count === 0 ? 'None pending' : `${action.count} item${action.count !== 1 ? 's' : ''} require attention`}
+                  </p>
+                )}
+              </div>
+              <ArrowRight size={15} className="text-text-muted flex-shrink-0" strokeWidth={2} />
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* ── Registration chart ──────────────────────────── */}
       <section>
         <h2 className="font-body text-base font-semibold text-forest-dark mb-4">
-          Registrations — Last 14 Days
+          Registrations — Last 30 Days
         </h2>
         <div className="bg-white rounded-card shadow-card p-4">
           {isLoading ? (

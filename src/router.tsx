@@ -43,6 +43,8 @@ import HarvestVerification from './pages/admin/HarvestVerification'
 import PlatformListings from './pages/admin/PlatformListings'
 import AdminFarmers from './pages/admin/AdminFarmers'
 import AdminInvestments from './pages/admin/AdminInvestments'
+import AdminPayouts from './pages/admin/AdminPayouts'
+import AdminSettings from './pages/admin/AdminSettings'
 
 // Shared
 import Notifications from './pages/shared/Notifications'
@@ -100,6 +102,8 @@ export const router = createBrowserRouter([
               { path: '/admin/listings',    element: <PlatformListings /> },
               { path: '/admin/farmers',     element: <AdminFarmers /> },
               { path: '/admin/investments', element: <AdminInvestments /> },
+              { path: '/admin/payouts',     element: <AdminPayouts /> },
+              { path: '/admin/settings',    element: <AdminSettings /> },
             ],
           },
         ],

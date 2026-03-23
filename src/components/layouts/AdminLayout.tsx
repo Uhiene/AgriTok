@@ -6,6 +6,8 @@ import {
   TrendingUp,
   ShieldCheck,
   Leaf,
+  DollarSign,
+  Settings,
   LogOut,
 } from 'lucide-react'
 
@@ -17,12 +19,14 @@ import logo from '../../assets/agritoken-logo.svg'
 // ── Nav ───────────────────────────────────────────────────────
 
 const NAV = [
-  { to: '/admin/dashboard',         icon: LayoutDashboard, label: 'Dashboard',           exact: true  },
-  { to: '/admin/kyc',               icon: ShieldCheck,     label: 'KYC Review',          exact: false },
-  { to: '/admin/harvest',           icon: Leaf,            label: 'Harvest Verification', exact: false },
-  { to: '/admin/listings',          icon: Sprout,          label: 'Listings',            exact: false },
-  { to: '/admin/farmers',           icon: Users,           label: 'Farmers',             exact: false },
-  { to: '/admin/investments',       icon: TrendingUp,      label: 'Investments',         exact: false },
+  { to: '/admin/dashboard',   icon: LayoutDashboard, label: 'Dashboard',            exact: true  },
+  { to: '/admin/kyc',         icon: ShieldCheck,     label: 'KYC Review',           exact: false },
+  { to: '/admin/harvest',     icon: Leaf,            label: 'Harvest Verification', exact: false },
+  { to: '/admin/listings',    icon: Sprout,          label: 'Listings',             exact: false },
+  { to: '/admin/farmers',     icon: Users,           label: 'Farmers',              exact: false },
+  { to: '/admin/investments', icon: TrendingUp,      label: 'Investments',          exact: false },
+  { to: '/admin/payouts',     icon: DollarSign,      label: 'Payouts',              exact: false },
+  { to: '/admin/settings',    icon: Settings,        label: 'Settings',             exact: false },
 ]
 
 function SideNavItem({ to, icon: Icon, label, exact }: typeof NAV[number]) {
