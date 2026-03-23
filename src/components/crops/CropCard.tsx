@@ -369,7 +369,6 @@ export default function CropCard({
   return (
     <FullCard
       listing={listing}
-      variant="full"
       farmerName={farmerName}
       farmerLocation={farmerLocation}
       linkPrefix={linkPrefix}

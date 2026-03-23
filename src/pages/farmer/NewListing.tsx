@@ -10,7 +10,7 @@ import { motion } from 'framer-motion'
 import {
   ArrowLeft, CheckCircle2, Loader2, ChevronRight, ChevronLeft,
   Upload, X, Search, FileText, Save, AlertCircle, ExternalLink,
-  Coins, Eye, Link as LinkIcon,
+  Coins, Eye,
 } from 'lucide-react'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -58,7 +58,7 @@ const step1Schema = z.object({
   farm_id:           z.string().min(1, 'Select a farm'),
   crop_type:         z.string().min(1, 'Select a crop type'),
   description:       z.string().min(100, 'Description must be at least 100 characters').max(1000),
-  expected_yield_kg: z.number({ invalid_type_error: 'Enter a valid number' }).min(100, 'Min 100 kg'),
+  expected_yield_kg: z.number({ message: 'Enter a valid number' }).min(100, 'Min 100 kg'),
   planting_date:     z.string().min(1, 'Select planting date'),
   harvest_date:      z.string().min(1, 'Select harvest date'),
 }).refine(
@@ -70,7 +70,7 @@ const step1Schema = z.object({
 )
 
 const step2Schema = z.object({
-  total_tokens:             z.number({ invalid_type_error: 'Enter a number' }).int().min(1, 'Min 1 token'),
+  total_tokens:             z.number({ message: 'Enter a number' }).int().min(1, 'Min 1 token'),
   price_per_token:          z.number().min(0.10, 'Min $0.10').max(5.00, 'Max $5.00'),
   expected_return_percent:  z.number().min(10, 'Min 10%').max(40, 'Max 40%'),
   funding_deadline:         z.string().min(1, 'Select a funding deadline'),

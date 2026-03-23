@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
@@ -110,8 +110,6 @@ export default function Notifications() {
   const navigate     = useNavigate()
   const queryClient  = useQueryClient()
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
-  const loadMoreRef  = useRef<HTMLDivElement>(null)
-
   const queryKey = ['notifications-page', profile?.id]
 
   const {

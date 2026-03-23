@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAccount } from 'wagmi'
@@ -158,7 +158,6 @@ export default function RegisterFarmer() {
 
   // Accumulated data across steps
   const [step1Data, setStep1Data] = useState<Partial<Step1Values & Step1WalletValues>>({})
-  const [step2Data, setStep2Data] = useState<Partial<Step2Values>>({})
   const [kycIdFile, setKycIdFile] = useState<File | null>(null)
   const [farmPhotoFile, setFarmPhotoFile] = useState<File | null>(null)
 
@@ -169,7 +168,7 @@ export default function RegisterFarmer() {
 
   // ── Step 2 form ──────────────────────────────────────────
   const form2 = useForm<Step2Values>({
-    resolver: zodResolver(step2Schema),
+    resolver: zodResolver(step2Schema) as Resolver<Step2Values>,
   })
 
   const selectedFarmCountry = form2.watch('farmCountry')
@@ -182,8 +181,7 @@ export default function RegisterFarmer() {
   }
 
   // ── Step 2 submit ────────────────────────────────────────
-  function onStep2Submit(values: Step2Values) {
-    setStep2Data(values)
+  function onStep2Submit(_values: Step2Values) {
     setStep(3)
   }
 

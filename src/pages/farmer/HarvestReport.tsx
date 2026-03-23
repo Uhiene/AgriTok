@@ -23,14 +23,14 @@ import type { CropListing, Investment } from '../../types'
 
 const schema = z.object({
   actual_yield_kg: z
-    .number({ invalid_type_error: 'Enter a number' })
+    .number({ message: 'Enter a number' })
     .min(1, 'Min 1 kg'),
   yield_diff_explanation: z.string().optional(),
   actual_harvest_date: z.string().min(1, 'Enter the harvest date'),
   selling_price_per_kg: z
-    .number({ invalid_type_error: 'Enter a number' })
+    .number({ message: 'Enter a number' })
     .min(0.01, 'Enter a valid price'),
-  agronomist_verified: z.boolean().default(false),
+  agronomist_verified: z.boolean(),
   agronomist_name: z.string().optional(),
 }).refine(
   (d) => !d.agronomist_verified || (d.agronomist_name && d.agronomist_name.trim().length > 2),

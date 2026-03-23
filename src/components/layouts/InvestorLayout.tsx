@@ -8,8 +8,6 @@ import {
   User,
   LogOut,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
-
 import { useAuth } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
 import { signOut } from '../../lib/auth'

@@ -28,11 +28,9 @@ import { useNavigate } from 'react-router-dom'
 import type { CropListing } from '../../types'
 import {
   createInvestment,
-  updateInvestmentStatus,
 } from '../../lib/supabase/investments'
 import { updateListingFunding } from '../../lib/supabase/listings'
 import { createNotification } from '../../lib/supabase/notifications'
-import { supabase } from '../../lib/supabase/client'
 import { useAuthStore } from '../../stores/authStore'
 
 // ── Stripe ─────────────────────────────────────────────────────────────────

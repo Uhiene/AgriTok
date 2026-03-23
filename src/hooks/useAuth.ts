@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { useAuthStore } from '../stores/authStore'
-import { onAuthStateChange, connectWalletToProfile } from '../lib/auth'
+import { connectWalletToProfile } from '../lib/auth'
 import { supabase } from '../lib/supabase/client'
 import { getProfile } from '../lib/supabase/profiles'
 

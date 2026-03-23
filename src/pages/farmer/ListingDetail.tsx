@@ -60,7 +60,7 @@ function useRealtimeInvestments(listingId: string | undefined) {
           )
 
           // Optimistically update listing totals
-          queryClient.setQueryData<CropListing>(['listing', listingId], (prev) => {
+          queryClient.setQueryData<CropListing>(['listing', listingId], (prev: CropListing | undefined) => {
             if (!prev) return prev
             return {
               ...prev,
@@ -92,8 +92,6 @@ function useRealtimeInvestments(listingId: string | undefined) {
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-
   const { data: listing, isLoading, isError, refetch } = useQuery({
     queryKey: ['listing', id],
     queryFn:  () => getListing(id!),

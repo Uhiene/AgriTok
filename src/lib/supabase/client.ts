@@ -24,7 +24,7 @@ function make() {
         // call to hang indefinitely. Bypassing is safe for a single-client SPA:
         // concurrent getSession() calls all run immediately and Supabase's server
         // deduplicates concurrent refresh requests.
-        lock: (_n: string, _t: number, fn: () => Promise<unknown>) => fn(),
+        lock: <R>(_n: string, _t: number, fn: () => Promise<R>): Promise<R> => fn(),
       },
     },
   )

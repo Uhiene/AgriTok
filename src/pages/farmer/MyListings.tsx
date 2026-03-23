@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { differenceInDays, format } from 'date-fns'
+import { differenceInDays } from 'date-fns'
 import { motion } from 'framer-motion'
 import {
   Plus, Sprout, TrendingUp, Coins, Clock, Eye,
@@ -17,9 +17,6 @@ import type { CropListing, ListingStatus } from '../../types'
 
 const fmtUSD = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
-
-const fmtUSD2 = (n: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
 
 const STATUS_CFG: Record<ListingStatus, { label: string; cls: string }> = {
   open:      { label: 'Open',      cls: 'bg-accent-green/10 text-forest-mid'  },

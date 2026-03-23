@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, MapPin, Star, ShieldCheck, Clock, TrendingUp,
   TrendingDown, Minus, Plus, Sprout, AlertTriangle,
-  NotebookText, Leaf, FileText, Users,
+  NotebookText, Leaf, FileText,
 } from 'lucide-react'
 import Map, { Marker } from 'react-map-gl/mapbox'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -18,7 +18,6 @@ import { getFarm } from '../../lib/supabase/farms'
 import { getNotesByFarm } from '../../lib/supabase/notes'
 import { fetchCommodityPrices, getPriceAtDate, CROP_TYPE_TO_COMMODITY } from '../../lib/api/commodities'
 import PriceChart from '../../components/market/PriceChart'
-import { getFarmingAdvice } from '../../lib/api/weather'
 import WeatherWidget from '../../components/weather/WeatherWidget'
 import InvestModal from '../../components/invest/InvestModal'
 import { getCropImage } from '../../lib/api/unsplash'
@@ -272,9 +271,6 @@ export default function InvestorListingDetail() {
   const commodity     = commodities.find(
     (c) => c.name === COMMODITY_MAP[listing.crop_type.toLowerCase()],
   )
-  const weatherAdvice = farm
-    ? undefined // weather component handles this internally
-    : undefined
 
   return (
     <div className="min-h-screen bg-cream pb-28">

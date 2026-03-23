@@ -234,7 +234,7 @@ function DonutChart({ investments }: { investments: InvestmentWithListing[] }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(v: number) => fmtUSD(v)}
+            formatter={(v: unknown) => fmtUSD(Number(v))}
             contentStyle={{ fontFamily: 'Sora, sans-serif', fontSize: 12, borderRadius: 10, border: '1px solid rgba(13,43,30,0.1)' }}
           />
         </PieChart>
@@ -314,7 +314,7 @@ function PerformanceChart({ investments }: { investments: InvestmentWithListing[
             width={42}
           />
           <Tooltip
-            formatter={(v: number) => [fmtUSD(v), 'Portfolio value']}
+            formatter={(v: unknown) => [fmtUSD(Number(v)), 'Portfolio value']}
             contentStyle={{
               fontFamily: 'Sora, sans-serif', fontSize: 12,
               borderRadius: 10, border: '1px solid rgba(13,43,30,0.1)',

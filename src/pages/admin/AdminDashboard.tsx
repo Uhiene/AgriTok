@@ -19,7 +19,6 @@ import {
 } from 'recharts'
 
 import { supabase } from '../../lib/supabase/client'
-import { getAllListings } from '../../lib/supabase/listings'
 import type { CropListing, Profile } from '../../types'
 
 // ── Helpers ───────────────────────────────────────────────────

@@ -159,7 +159,11 @@ export default function Profile() {
 
   if (!profile) return null
 
-  const initials = profile.full_name
+  // profile is guaranteed non-null after the guard above;
+  // use a local const so TypeScript can narrow it in async closures
+  const p = profile
+
+  const initials = p.full_name
     .split(' ')
     .map((w) => w[0])
     .join('')
@@ -174,7 +178,7 @@ export default function Profile() {
     setAvatarUploading(true)
     try {
       const ext  = file.name.split('.').pop()
-      const path = `${profile.id}/avatar.${ext}`
+      const path = `${p.id}/avatar.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true })
@@ -184,7 +188,7 @@ export default function Profile() {
         .from('avatars')
         .getPublicUrl(path)
 
-      const updated = await upsertProfile({ id: profile.id, avatar_url: publicUrl })
+      const updated = await upsertProfile({ id: p.id, avatar_url: publicUrl })
       setProfile(updated)
       toast.success('Avatar updated')
     } catch (err) {
@@ -199,7 +203,7 @@ export default function Profile() {
 
   async function onAccountSave(values: AccountValues) {
     try {
-      const updated = await upsertProfile({ id: profile.id, ...values })
+      const updated = await upsertProfile({ id: p.id, ...values })
       setProfile(updated)
       toast.success('Profile updated')
     } catch (err) {
@@ -213,7 +217,7 @@ export default function Profile() {
   async function handleWalletSave() {
     if (!address) return
     try {
-      const updated = await upsertProfile({ id: profile.id, wallet_address: address })
+      const updated = await upsertProfile({ id: p.id, wallet_address: address })
       setProfile(updated)
       toast.success('Wallet linked to your account')
     } catch {
@@ -224,7 +228,7 @@ export default function Profile() {
   async function handleWalletDisconnect() {
     disconnect()
     try {
-      const updated = await upsertProfile({ id: profile.id, wallet_address: null })
+      const updated = await upsertProfile({ id: p.id, wallet_address: null })
       setProfile(updated)
       toast.success('Wallet disconnected')
     } catch {
@@ -265,7 +269,7 @@ export default function Profile() {
     setPrefs(newPrefs)
     setPrefsSaving(true)
     try {
-      const updated = await upsertProfile({ id: profile.id, notification_prefs: newPrefs })
+      const updated = await upsertProfile({ id: p.id, notification_prefs: newPrefs })
       setProfile(updated)
     } catch {
       toast.error('Failed to save preferences')

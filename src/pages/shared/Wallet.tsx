@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAccount, useBalance, useChainId, useSwitchChain } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -33,10 +33,6 @@ function fmtUSD(n: number) {
 
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function shortAddr(addr: string) {
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
 // ── BNB Chain logo SVG ────────────────────────────────────────────────────────

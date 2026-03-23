@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox'
-import type { MapLayerMouseEvent } from 'react-map-gl/mapbox'
+import type { MapMouseEvent } from 'react-map-gl/mapbox'
 import {
   ArrowLeft,
   MapPin,
@@ -35,7 +35,7 @@ const DEFAULT_CENTER = { lng: 3.3792, lat: 6.5244 }
 const schema = z.object({
   name: z.string().min(2, 'Farm name must be at least 2 characters'),
   acreage: z
-    .number({ invalid_type_error: 'Enter a valid acreage' })
+    .number({ message: 'Enter a valid acreage' })
     .positive('Acreage must be greater than 0')
     .max(100000, 'Acreage seems too large'),
   soil_type: z.string().min(1, 'Select a soil type'),
@@ -105,7 +105,7 @@ export default function NewFarm() {
     }
   }, [coords])
 
-  const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
+  const handleMapClick = useCallback((e: MapMouseEvent) => {
     setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng })
   }, [])
 
