@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- 3D Blockchain Block -->
+  <polygon points="200,210 130,250 200,290 270,250" fill="#5DCAA5"/>
+  <polygon points="130,250 130,300 200,340 200,290" fill="#085041"/>
+  <polygon points="270,250 270,300 200,340 200,290" fill="#1D9E75"/>
+
+  <!-- Hash lines on top face -->
+  <line x1="158" y1="238" x2="242" y2="238" stroke="#085041" stroke-width="1" opacity="0.3"/>
+  <line x1="152" y1="250" x2="248" y2="250" stroke="#085041" stroke-width="1" opacity="0.3"/>
+  <line x1="158" y1="262" x2="242" y2="262" stroke="#085041" stroke-width="1" opacity="0.3"/>
+
+  <!-- Chain link dots on left face -->
+  <circle cx="152" cy="272" r="3" fill="#1D9E75" opacity="0.5"/>
+  <circle cx="168" cy="280" r="3" fill="#1D9E75" opacity="0.5"/>
+  <circle cx="184" cy="288" r="3" fill="#1D9E75" opacity="0.5"/>
+
+  <!-- Chain link dots on right face -->
+  <circle cx="248" cy="272" r="3" fill="#5DCAA5" opacity="0.4"/>
+  <circle cx="232" cy="280" r="3" fill="#5DCAA5" opacity="0.4"/>
+  <circle cx="216" cy="288" r="3" fill="#5DCAA5" opacity="0.4"/>
+
+  <!-- Main stem -->
+  <path d="M200,210 L200,105" stroke="#1D9E75" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Left leaf -->
+  <path d="M200,160 C184,144 170,140 164,148 C158,156 166,168 200,160Z" fill="#1D9E75"/>
+  <path d="M200,160 C186,150 176,146 170,150" fill="none" stroke="#085041" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Right leaf -->
+  <path d="M200,135 C218,118 234,116 238,124 C242,134 228,144 200,135Z" fill="#5DCAA5"/>
+  <path d="M200,135 C216,124 228,122 234,126" fill="none" stroke="#085041" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Small budding leaf -->
+  <path d="M200,115 C190,106 184,106 184,112 C184,118 192,118 200,115Z" fill="#0F6E56"/>
+
+  <!-- Sun -->
+  <circle cx="200" cy="58" r="18" fill="#EF9F27"/>
+  <line x1="200" y1="32" x2="200" y2="24" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="218" y1="40" x2="224" y2="34" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="226" y1="58" x2="234" y2="58" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="218" y1="76" x2="224" y2="82" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="182" y1="40" x2="176" y2="34" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="174" y1="58" x2="166" y2="58" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="182" y1="76" x2="176" y2="82" stroke="#EF9F27" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

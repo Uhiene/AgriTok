@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "npm:stripe@17": "https://esm.sh/stripe@17",
+    "npm:@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2",
+    "npm:viem@2": "https://esm.sh/viem@2",
+    "npm:viem/accounts": "https://esm.sh/viem@2/accounts"
+  }
+}
