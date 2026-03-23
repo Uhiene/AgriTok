@@ -22,6 +22,13 @@ import { useAuth } from "../../hooks/useAuth";
 
 import logo from "../../assets/agritoken-logo.svg";
 
+import farm1 from "../../assets/hero/farm1.jpg";
+import farm2 from "../../assets/hero/farm2.jpg";
+import farm3 from "../../assets/hero/farm3.jpg";
+import farm4 from "../../assets/hero/farm4.jpg";
+import farm5 from "../../assets/hero/farm5.jpg";
+import farm6 from "../../assets/hero/farm6.jpg";
+
 function FadeInSection({
   children,
   delay = 0,
@@ -81,11 +88,16 @@ function useFeaturedListings() {
 }
 
 function useHeroImages() {
-  return useQuery({
-    queryKey: ["hero-unsplash-images"],
-    queryFn: () => searchPhotos("farming africa harvest crops", 6),
-    staleTime: 1000 * 60 * 60,
-  });
+  return {
+    data: [
+      { id: 1, urls: { regular: farm1 } },
+      { id: 2, urls: { regular: farm2 } },
+      { id: 3, urls: { regular: farm3 } },
+      { id: 4, urls: { regular: farm4 } },
+      { id: 5, urls: { regular: farm5 } },
+      { id: 6, urls: { regular: farm6 } },
+    ],
+  };
 }
 
 // ── Navbar ────────────────────────────────────────────────────
@@ -105,7 +117,7 @@ function Navbar() {
           <img src={logo} alt="AgriTok Logo" className="h-10 w-auto" />
           <Link
             to="/"
-            className="font-display text-2xl text-accent-green tracking-tight"
+            className="font-display text-xl text-accent-green tracking-wide font-medium"
           >
             AgriTok
           </Link>
@@ -261,7 +273,8 @@ function HeroSection() {
                 >
                   <img
                     src={img.urls.regular}
-                    alt={img.alt_description ?? "Crop farming"}
+                    alt="Farm"
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -282,7 +295,8 @@ function HeroSection() {
                 >
                   <img
                     src={img.urls.regular}
-                    alt={img.alt_description ?? "Harvest"}
+                    alt="Farm"
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -303,7 +317,8 @@ function HeroSection() {
                 >
                   <img
                     src={img.urls.regular}
-                    alt={img.alt_description ?? "Farm"}
+                    alt="Farm"
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -394,7 +409,7 @@ function HowItWorksSection() {
       step: "02",
       title: "Tokenize Your Crop",
       description:
-        "Create a crop listing, set your funding goal, and mint ERC-20 tokens representing future harvest yield on BNB Chain.",
+        "Create a crop listing, set your funding goal, and mint BEP-20 tokens representing future harvest yield on BNB Chain.",
     },
     {
       icon: Users,
@@ -649,12 +664,15 @@ function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 pb-12 border-b border-white/[0.06]">
           {/* Brand */}
           <div className="md:col-span-1 space-y-5">
-            <Link
-              to="/"
-              className="font-display text-2xl text-accent-green block"
-            >
-              AgriTok
-            </Link>
+            <div className="flex items-center">
+              <img src={logo} alt="AgriTok Logo" className="h-10 w-auto" />
+              <Link
+                to="/"
+                className="font-display text-xl text-accent-green tracking-wide font-medium"
+              >
+                AgriTok
+              </Link>
+            </div>
             <p className="text-white/40 text-sm font-body leading-relaxed">
               Tokenized crop financing for smallholder farmers. Real yield, real
               crops, on-chain.

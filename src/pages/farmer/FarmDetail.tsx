@@ -28,6 +28,7 @@ import { getFarm } from '../../lib/supabase/farms'
 import { getListingsByFarm } from '../../lib/supabase/listings'
 import { getNotesByFarm, createNote, deleteNote } from '../../lib/supabase/notes'
 import WeatherWidget from '../../components/weather/WeatherWidget'
+import CropAdvisory from '../../components/advisory/CropAdvisory'
 import type { CropListing, FarmNote } from '../../types'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -293,6 +294,16 @@ export default function FarmDetail() {
         lon={farm.longitude}
         locationName={farm.location_name}
       />
+
+      {/* AI Advisory */}
+      {profile && (
+        <CropAdvisory
+          farm={farm}
+          farmerId={profile.id}
+          cropType={listings[0]?.crop_type ?? 'mixed crops'}
+          location={farm.location_name}
+        />
+      )}
 
       {/* Map */}
       <motion.div

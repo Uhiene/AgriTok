@@ -19,6 +19,7 @@ import { getInvestmentsWithListings } from '../../lib/supabase/investments'
 import { fetchCommodityPrices } from '../../lib/api/commodities'
 import CropCard from '../../components/crops/CropCard'
 import CommodityPriceCard from '../../components/market/CommodityPriceCard'
+import MarketIntelligence from '../../components/advisory/MarketIntelligence'
 import type { InvestmentStatus } from '../../types'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -237,6 +238,21 @@ export default function InvestorDashboard() {
           loading={statsLoading}
         />
       </div>
+
+      {/* ── Market Intelligence ──────────────────────────── */}
+      {trending[0] && (
+        <MarketIntelligence
+          listingId={trending[0].id}
+          cropType={trending[0].crop_type}
+          listingDetails={{
+            funding_goal:    trending[0].funding_goal_usd,
+            amount_raised:   trending[0].amount_raised_usd,
+            expected_return: trending[0].expected_return_percent,
+            tokens_sold:     trending[0].tokens_sold,
+            total_tokens:    trending[0].total_tokens,
+          }}
+        />
+      )}
 
       {/* ── Trending Crops ───────────────────────────────── */}
       <section>

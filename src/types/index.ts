@@ -127,6 +127,7 @@ export interface FarmNote {
   farm_id: string
   farmer_id: string
   note: string
+  note_type?: string | null
   photo_url: string | null
   created_at: string
 }

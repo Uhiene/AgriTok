@@ -117,7 +117,7 @@ export default function AdminLayout() {
         <header className="sticky top-0 z-30 bg-forest-dark border-b border-white/[0.06] h-14 flex items-center justify-between px-5">
           <div className="flex items-center gap-2.5 lg:hidden">
             <img src={logo} alt="AgriTok" className="h-7 w-auto" />
-            <span className="font-display text-lg text-gold">AgriTok</span>
+            <span className="font-display text-lg text-gold tracking-wide font-medium">AgriTok</span>
           </div>
 
           <div className="hidden lg:flex items-center gap-3">

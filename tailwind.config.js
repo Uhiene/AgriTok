@@ -23,11 +23,11 @@ export default {
         modal: '20px',
         pill: '30px',
       },
-      fontFamily: {
-        display: ['"DM Serif Display"', 'Georgia', 'serif'],
-        body: ['Sora', 'system-ui', 'sans-serif'],
-        mono: ['"DM Mono"', 'monospace'],
-      },
+    fontFamily: {
+  display: ['Baloo 2', 'cursive'],
+  body: ['Nunito', 'system-ui', 'sans-serif'],
+  mono: ['Fira Code', 'monospace'],
+},
       boxShadow: {
         card: '0 2px 16px rgba(13,43,30,0.08)',
         'card-hover': '0 4px 24px rgba(13,43,30,0.14)',

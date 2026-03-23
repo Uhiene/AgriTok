@@ -20,6 +20,7 @@ import { fetchCommodityPrices, getPriceAtDate, CROP_TYPE_TO_COMMODITY } from '..
 import PriceChart from '../../components/market/PriceChart'
 import WeatherWidget from '../../components/weather/WeatherWidget'
 import InvestModal from '../../components/invest/InvestModal'
+import MarketIntelligence from '../../components/advisory/MarketIntelligence'
 import { getCropImage } from '../../lib/api/unsplash'
 import { useAuth } from '../../hooks/useAuth'
 import type { CropListing, Investment } from '../../types'
@@ -566,6 +567,25 @@ export default function InvestorListingDetail() {
             </div>
           </div>
         )}
+
+        {/* ── Market Intelligence ─────────────────────────────── */}
+        <MarketIntelligence
+          listingId={listing.id}
+          cropType={listing.crop_type}
+          location={farm?.location_name}
+          commodityPriceTrend={
+            commodity
+              ? `${commodity.name} trending at $${commodity.currentPrice.toFixed(2)}/MT`
+              : undefined
+          }
+          listingDetails={{
+            funding_goal:    listing.funding_goal_usd,
+            amount_raised:   listing.amount_raised_usd,
+            expected_return: listing.expected_return_percent,
+            tokens_sold:     listing.tokens_sold,
+            total_tokens:    listing.total_tokens,
+          }}
+        />
 
         {/* ── Weather at farm ─────────────────────────────────── */}
         {farm && (

@@ -19,10 +19,17 @@ import { useAuth } from '../../hooks/useAuth'
 import { getFarmsByFarmer } from '../../lib/supabase/farms'
 import { getListingsByFarmer } from '../../lib/supabase/listings'
 import { supabase } from '../../lib/supabase/client'
+import { getWeatherByCoords } from '../../lib/api/weather'
 import WeatherWidget from '../../components/weather/WeatherWidget'
 import NoteCard from '../../components/notes/NoteCard'
 import AddNoteModal from '../../components/notes/AddNoteModal'
+import CropAdvisory from '../../components/advisory/CropAdvisory'
 import type { Farm, CropListing, FarmNote } from '../../types'
+
+// ── Weather query defaults (must match WeatherWidget) ─────────
+
+const DEFAULT_LAT = 6.5244
+const DEFAULT_LON = 3.3792
 
 // ── Greeting helper ───────────────────────────────────────────
 
@@ -138,6 +145,16 @@ export default function FarmerDashboard() {
     enabled: !!profile?.id,
   })
 
+  // Weather — shares cache with WeatherWidget via same query key
+  const primaryLat = farms[0]?.latitude ?? DEFAULT_LAT
+  const primaryLon = farms[0]?.longitude ?? DEFAULT_LON
+  const { data: weatherData } = useQuery({
+    queryKey: ['weather', primaryLat, primaryLon],
+    queryFn:  () => getWeatherByCoords(primaryLat, primaryLon),
+    staleTime: 1000 * 60 * 10,
+    enabled:   farms.length > 0 || !farmsLoading,
+  })
+
   // Recent notes (across all farms)
   const { data: recentNotes = [], isLoading: notesLoading } = useQuery({
     queryKey: ['farmer-recent-notes', profile?.id],
@@ -206,6 +223,22 @@ export default function FarmerDashboard() {
         lon={farms[0]?.longitude}
         locationName={farms[0]?.location_name}
       />
+
+      {/* ── AI Advisory ────────────────────────────────────── */}
+      {farms[0] && profile && (
+        <CropAdvisory
+          farm={farms[0]}
+          farmerId={profile.id}
+          cropType={listings[0]?.crop_type ?? 'mixed crops'}
+          location={farms[0].location_name}
+          weather={weatherData ? {
+            temp_c:      weatherData.temp_c,
+            humidity:    weatherData.humidity,
+            condition:   weatherData.condition,
+            description: weatherData.description,
+          } : undefined}
+        />
+      )}
 
       {/* ── Stats row ─────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">

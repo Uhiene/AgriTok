@@ -82,7 +82,7 @@ export default function InvestorLayout() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 h-16 border-b border-white/[0.06]">
           <img src={logo} alt="AgriTok" className="h-8 w-auto" />
-          <span className="font-display text-xl text-gold">AgriTok</span>
+          <span className="font-display text-xl text-gold tracking-wide font-medium">AgriTok</span>
         </div>
 
         {/* Nav */}
@@ -127,7 +127,7 @@ export default function InvestorLayout() {
           {/* Logo (mobile) */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <img src={logo} alt="AgriTok" className="h-7 w-auto" />
-            <span className="font-display text-lg text-gold">AgriTok</span>
+            <span className="font-display text-lg text-gold tracking-wide font-medium">AgriTok</span>
           </div>
 
           {/* Greeting (desktop) */}

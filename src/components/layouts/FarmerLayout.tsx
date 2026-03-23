@@ -94,7 +94,7 @@ export default function FarmerLayout() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 h-16 border-b border-white/[0.06]">
           <img src={logo} alt="AgriTok" className="h-8 w-auto" />
-          <span className="font-display text-xl text-accent-green">AgriTok</span>
+          <span className="font-display text-xl text-accent-green tracking-wide font-medium">AgriTok</span>
         </div>
 
         {/* Nav links */}
@@ -139,7 +139,7 @@ export default function FarmerLayout() {
           {/* Logo (mobile only) */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <img src={logo} alt="AgriTok" className="h-7 w-auto" />
-            <span className="font-display text-lg text-accent-green">AgriTok</span>
+            <span className="font-display text-lg text-accent-green tracking-wide font-medium">AgriTok</span>
           </div>
 
           {/* Greeting + weather mini (desktop) */}
