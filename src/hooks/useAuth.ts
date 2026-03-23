@@ -24,15 +24,19 @@ export function useAuth() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout)
       if (cancelled) return
+      console.log('[useAuth] getSession result:', session ? `user ${session.user.id}` : 'no session')
       if (!session) {
+        console.log('[useAuth] no session → setLoading(false), profile stays as persisted')
         setLoading(false)
         return
       }
       setUser(session.user)
       try {
         const p = await getProfile(session.user.id)
+        console.log('[useAuth] getProfile result:', p ? `role=${p.role}` : 'null')
         if (!cancelled && p) setProfile(p)
-      } catch {
+      } catch (err) {
+        console.error('[useAuth] getProfile error:', err)
         // keep any persisted profile
       } finally {
         if (!cancelled) setLoading(false)

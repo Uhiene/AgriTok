@@ -1,5 +1,5 @@
 -- =============================================================
--- AgriToken — Supabase Schema + RLS Policies
+-- AgriTok — Supabase Schema + RLS Policies
 -- Run this in the Supabase SQL Editor (Dashboard > SQL Editor)
 -- =============================================================
 

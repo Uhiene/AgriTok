@@ -12,7 +12,7 @@ import { useAuth } from './hooks/useAuth'
 import { onAuthStateChange } from './lib/auth'
 
 const wagmiConfig = getDefaultConfig({
-  appName: 'AgriToken',
+  appName: 'AgriTok',
   // Falls back to a placeholder so the app loads without crashing when
   // VITE_WALLETCONNECT_PROJECT_ID is not yet set. WalletConnect v2 features
   // won't work until a real ID from cloud.walletconnect.com is provided.

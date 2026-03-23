@@ -292,7 +292,7 @@ export default function RegisterFarmer() {
         return
       }
 
-      toast.success(`Welcome to AgriToken, ${profile?.full_name ?? fullName}! Your KYC is pending review.`)
+      toast.success(`Welcome to AgriTok, ${profile?.full_name ?? fullName}! Your KYC is pending review.`)
       navigate('/farmer/dashboard', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed.'

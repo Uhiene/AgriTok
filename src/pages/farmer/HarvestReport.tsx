@@ -652,7 +652,7 @@ export default function HarvestReport() {
         <div className="flex gap-3 p-4 bg-gold/10 rounded-card border border-gold/20">
           <AlertTriangle size={16} strokeWidth={1.5} className="text-amber-600 flex-shrink-0 mt-0.5" />
           <p className="font-body text-xs text-forest-dark leading-relaxed">
-            Submitting a false harvest report is a breach of the AgriToken platform terms and may result
+            Submitting a false harvest report is a breach of the AgriTok platform terms and may result
             in account suspension. Photos must clearly show the harvested crop. Admin review typically
             takes 24–48 hours.
           </p>

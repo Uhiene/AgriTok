@@ -314,7 +314,7 @@ export default function AdminSettings() {
           <Field label="Platform Name">
             <input
               type="text"
-              value="AgriToken"
+              value="AgriTok"
               disabled
               className="w-full rounded-card border border-[rgba(13,43,30,0.15)] font-body text-sm text-text-muted px-4 py-2.5 bg-forest-dark/[0.02] cursor-not-allowed"
             />

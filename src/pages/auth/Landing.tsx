@@ -102,12 +102,12 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <img src={logo} alt="AgriToken Logo" className="h-10 w-auto" />
+          <img src={logo} alt="AgriTok Logo" className="h-10 w-auto" />
           <Link
             to="/"
             className="font-display text-2xl text-accent-green tracking-tight"
           >
-            AgriToken
+            AgriTok
           </Link>
         </div>
 
@@ -653,7 +653,7 @@ function Footer() {
               to="/"
               className="font-display text-2xl text-accent-green block"
             >
-              AgriToken
+              AgriTok
             </Link>
             <p className="text-white/40 text-sm font-body leading-relaxed">
               Tokenized crop financing for smallholder farmers. Real yield, real
@@ -694,7 +694,7 @@ function Footer() {
 
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/30 text-sm font-body">
-            {year} AgriToken. All rights reserved.
+            {year} AgriTok. All rights reserved.
           </p>
           <p className="text-white/20 text-xs font-body">
             Not financial advice. Investing in crop tokens carries risk.

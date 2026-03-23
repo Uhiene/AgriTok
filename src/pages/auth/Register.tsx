@@ -19,7 +19,7 @@ export default function Register() {
           <ArrowLeft size={16} strokeWidth={2} />
           Back
         </button>
-        <span className="font-display text-xl text-forest-dark">AgriToken</span>
+        <span className="font-display text-xl text-forest-dark">AgriTok</span>
         <div className="w-16" />
       </header>
 
@@ -49,7 +49,7 @@ export default function Register() {
           className="text-center mb-12"
         >
           <h1 className="font-display text-4xl sm:text-5xl text-forest-dark mb-3">
-            Join AgriToken
+            Join AgriTok
           </h1>
           <p className="font-body text-text-muted text-base max-w-sm mx-auto">
             Choose how you want to participate in the future of crop finance.

@@ -136,7 +136,7 @@ export default function Login() {
               <span className="text-forest-dark font-bold text-sm font-body">AT</span>
             </div>
             <span className="text-white font-semibold text-lg font-body tracking-wide">
-              AgriToken
+              AgriTok
             </span>
           </div>
 
@@ -174,7 +174,7 @@ export default function Login() {
             <div className="w-8 h-8 rounded-lg bg-accent-green flex items-center justify-center">
               <span className="text-forest-dark font-bold text-xs font-body">AT</span>
             </div>
-            <span className="font-body font-semibold text-forest-dark text-base">AgriToken</span>
+            <span className="font-body font-semibold text-forest-dark text-base">AgriTok</span>
           </div>
 
           <h2 className="font-display text-3xl text-forest-dark mb-1">Welcome back</h2>
@@ -356,7 +356,7 @@ export default function Login() {
 
               {/* Register hint */}
               <p className="text-center font-body text-sm text-text-muted">
-                New to AgriToken?{' '}
+                New to AgriTok?{' '}
                 <Link to="/register" className="text-accent-green font-medium hover:underline">
                   Create an account
                 </Link>

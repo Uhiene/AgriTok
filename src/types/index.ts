@@ -84,6 +84,7 @@ export interface CropListing {
   status: ListingStatus
   token_contract_address: string | null
   description: string
+  featured: boolean
   created_at: string
 }
 

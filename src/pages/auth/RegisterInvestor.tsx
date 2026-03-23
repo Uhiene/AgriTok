@@ -160,7 +160,7 @@ export default function RegisterInvestor() {
         console.error('Profile upsert failed:', profileErr)
       }
 
-      toast.success(`Welcome to AgriToken, ${fullName}! Start exploring crop listings.`)
+      toast.success(`Welcome to AgriTok, ${fullName}! Start exploring crop listings.`)
       navigate('/investor/dashboard', { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed.'

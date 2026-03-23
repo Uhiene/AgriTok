@@ -2,11 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import {
-  Download,
-  Search,
-  ChevronDown,
-  Sprout,
-  TrendingUp,
+  Download, Search, ChevronDown, Sprout, TrendingUp, Star,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -19,6 +15,7 @@ async function getAllAdminListings(): Promise<CropListing[]> {
   const { data, error } = await supabase
     .from('crop_listings')
     .select('*')
+    .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -43,26 +40,19 @@ const ALL_STATUSES: ListingStatus[] = ['open', 'funded', 'harvested', 'paid_out'
 
 function exportCSV(listings: CropListing[]) {
   const headers = [
-    'ID', 'Crop Type', 'Status', 'Funding Goal (USD)', 'Amount Raised (USD)',
+    'ID', 'Crop Type', 'Status', 'Featured', 'Funding Goal (USD)', 'Amount Raised (USD)',
     'Total Tokens', 'Tokens Sold', 'Expected Return %', 'Harvest Date', 'Created At',
   ]
   const rows = listings.map((l) => [
-    l.id,
-    l.crop_type,
-    l.status,
-    l.funding_goal_usd,
-    l.amount_raised_usd,
-    l.total_tokens,
-    l.tokens_sold,
-    l.expected_return_percent,
-    l.harvest_date,
-    l.created_at,
+    l.id, l.crop_type, l.status, l.featured ? 'Yes' : 'No',
+    l.funding_goal_usd, l.amount_raised_usd, l.total_tokens,
+    l.tokens_sold, l.expected_return_percent, l.harvest_date, l.created_at,
   ])
   const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
-  a.href = url
+  a.href     = url
   a.download = `agritoken-listings-${format(new Date(), 'yyyy-MM-dd')}.csv`
   a.click()
   URL.revokeObjectURL(url)
@@ -75,6 +65,7 @@ export default function PlatformListings() {
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState<ListingStatus | 'all'>('all')
   const [changingId,   setChangingId]   = useState<string | null>(null)
+  const [featuringId,  setFeaturingId]  = useState<string | null>(null)
 
   const { data: listings = [], isLoading } = useQuery({
     queryKey: ['admin-all-listings'],
@@ -84,22 +75,30 @@ export default function PlatformListings() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ListingStatus }) => {
-      const { error } = await supabase
-        .from('crop_listings')
-        .update({ status })
-        .eq('id', id)
+      const { error } = await supabase.from('crop_listings').update({ status }).eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-all-listings'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
-      toast.success('Listing status updated')
+      toast.success('Status updated')
       setChangingId(null)
     },
-    onError: () => {
-      toast.error('Failed to update status')
-      setChangingId(null)
+    onError: () => { toast.error('Failed to update status'); setChangingId(null) },
+  })
+
+  const featureMutation = useMutation({
+    mutationFn: async ({ id, featured }: { id: string; featured: boolean }) => {
+      const { error } = await supabase.from('crop_listings').update({ featured }).eq('id', id)
+      if (error) throw error
     },
+    onSuccess: (_, { featured }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-all-listings'] })
+      queryClient.invalidateQueries({ queryKey: ['all-open-listings'] })
+      toast.success(featured ? 'Listing featured — appears first on marketplace' : 'Listing unfeatured')
+      setFeaturingId(null)
+    },
+    onError: () => { toast.error('Failed to update featured status'); setFeaturingId(null) },
   })
 
   const filtered = listings.filter((l) => {
@@ -111,6 +110,7 @@ export default function PlatformListings() {
   })
 
   const totalVolume = listings.reduce((s, l) => s + Number(l.amount_raised_usd), 0)
+  const featuredCount = listings.filter((l) => l.featured).length
 
   return (
     <div className="px-4 py-6 max-w-6xl mx-auto space-y-6">
@@ -120,8 +120,8 @@ export default function PlatformListings() {
         <div>
           <h1 className="font-display text-3xl text-forest-dark">Platform Listings</h1>
           <p className="font-body text-sm text-text-muted mt-1">
-            {listings.length} total &middot;{' '}
-            ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })} raised
+            {listings.length} total &middot; ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })} raised
+            {featuredCount > 0 && ` · ${featuredCount} featured`}
           </p>
         </div>
         <button
@@ -136,7 +136,6 @@ export default function PlatformListings() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        {/* Search */}
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" strokeWidth={2} />
           <input
@@ -147,17 +146,15 @@ export default function PlatformListings() {
             className="w-full pl-9 pr-4 py-2.5 rounded-pill bg-white shadow-card font-body text-sm text-forest-dark placeholder:text-text-muted/60 outline-none focus:ring-2 focus:ring-accent-green/30 border border-transparent focus:border-accent-green/30"
           />
         </div>
-
-        {/* Status filter */}
         <div className="flex gap-2 flex-wrap">
           {(['all', ...ALL_STATUSES] as (ListingStatus | 'all')[]).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 rounded-pill font-body text-xs font-semibold transition-all ${
+              className={`px-3 py-2 rounded-pill font-body text-xs font-semibold transition-all capitalize ${
                 statusFilter === s
                   ? 'bg-forest-dark text-white'
-                  : 'bg-white shadow-card text-text-muted hover:text-forest-dark capitalize'
+                  : 'bg-white shadow-card text-text-muted hover:text-forest-dark'
               }`}
             >
               {s.replace('_', ' ')}
@@ -166,18 +163,14 @@ export default function PlatformListings() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Desktop table */}
       <div className="bg-white rounded-card shadow-card overflow-hidden">
-        {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-cream">
               <tr>
-                {['Crop', 'Status', 'Raised / Goal', 'Tokens', 'Return', 'Harvest', 'Created', 'Action'].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left font-body text-xs font-semibold text-text-muted uppercase tracking-wide"
-                  >
+                {['Crop', 'Featured', 'Status', 'Raised / Goal', 'Tokens', 'Return', 'Harvest', 'Created', 'Action'].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left font-body text-xs font-semibold text-text-muted uppercase tracking-wide">
                     {h}
                   </th>
                 ))}
@@ -187,16 +180,14 @@ export default function PlatformListings() {
               {isLoading ? (
                 [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((j) => (
-                      <td key={j} className="px-4 py-3">
-                        <Skeleton className="h-4 w-20" />
-                      </td>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center font-body text-sm text-text-muted">
+                  <td colSpan={9} className="px-4 py-12 text-center font-body text-sm text-text-muted">
                     No listings found
                   </td>
                 </tr>
@@ -206,7 +197,7 @@ export default function PlatformListings() {
                     ? Math.min(100, (listing.amount_raised_usd / listing.funding_goal_usd) * 100)
                     : 0
                   return (
-                    <tr key={listing.id} className="hover:bg-cream/50 transition-colors">
+                    <tr key={listing.id} className={`hover:bg-cream/50 transition-colors ${listing.featured ? 'bg-gold/[0.03]' : ''}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-card bg-forest-mid/10 flex items-center justify-center flex-shrink-0">
@@ -216,6 +207,23 @@ export default function PlatformListings() {
                             {listing.crop_type}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          disabled={featuringId === listing.id}
+                          onClick={() => {
+                            setFeaturingId(listing.id)
+                            featureMutation.mutate({ id: listing.id, featured: !listing.featured })
+                          }}
+                          title={listing.featured ? 'Remove from featured' : 'Feature this listing'}
+                          className={`w-8 h-8 rounded-card flex items-center justify-center transition-all ${
+                            listing.featured
+                              ? 'bg-gold/20 text-gold hover:bg-gold/30'
+                              : 'bg-forest-dark/[0.04] text-text-muted hover:text-gold hover:bg-gold/10'
+                          } disabled:opacity-40`}
+                        >
+                          <Star size={14} strokeWidth={listing.featured ? 0 : 2} fill={listing.featured ? '#F5C842' : 'none'} />
+                        </button>
                       </td>
                       <td className="px-4 py-3">
                         <StatusSelect
@@ -235,10 +243,7 @@ export default function PlatformListings() {
                             ${Number(listing.funding_goal_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                           </p>
                           <div className="mt-1 h-1.5 rounded-full bg-forest-dark/[0.06] overflow-hidden w-24">
-                            <div
-                              className="h-full rounded-full bg-accent-green transition-all"
-                              style={{ width: `${fundingPct}%` }}
-                            />
+                            <div className="h-full rounded-full bg-accent-green" style={{ width: `${fundingPct}%` }} />
                           </div>
                         </div>
                       </td>
@@ -285,34 +290,47 @@ export default function PlatformListings() {
               </div>
             ))
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center font-body text-sm text-text-muted">
-              No listings found
-            </div>
+            <div className="py-12 text-center font-body text-sm text-text-muted">No listings found</div>
           ) : (
             filtered.map((listing) => {
               const fundingPct = listing.funding_goal_usd > 0
                 ? Math.min(100, (listing.amount_raised_usd / listing.funding_goal_usd) * 100)
                 : 0
               return (
-                <div key={listing.id} className="p-4 space-y-3">
+                <div key={listing.id} className={`p-4 space-y-3 ${listing.featured ? 'bg-gold/[0.03]' : ''}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-body text-sm font-semibold text-forest-dark capitalize">
-                      {listing.crop_type}
-                    </p>
-                    <StatusSelect
-                      listing={listing}
-                      isChanging={changingId === listing.id}
-                      onChange={(status) => {
-                        setChangingId(listing.id)
-                        statusMutation.mutate({ id: listing.id, status })
-                      }}
-                    />
+                    <div className="flex items-center gap-2">
+                      <p className="font-body text-sm font-semibold text-forest-dark capitalize">
+                        {listing.crop_type}
+                      </p>
+                      {listing.featured && (
+                        <Star size={12} fill="#F5C842" stroke="none" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={featuringId === listing.id}
+                        onClick={() => {
+                          setFeaturingId(listing.id)
+                          featureMutation.mutate({ id: listing.id, featured: !listing.featured })
+                        }}
+                        className={`font-body text-xs px-2 py-1 rounded-pill ${listing.featured ? 'bg-gold/20 text-forest-dark' : 'bg-forest-dark/[0.06] text-text-muted'}`}
+                      >
+                        {listing.featured ? 'Unfeature' : 'Feature'}
+                      </button>
+                      <StatusSelect
+                        listing={listing}
+                        isChanging={changingId === listing.id}
+                        onChange={(status) => {
+                          setChangingId(listing.id)
+                          statusMutation.mutate({ id: listing.id, status })
+                        }}
+                      />
+                    </div>
                   </div>
                   <div>
                     <p className="font-mono text-xs text-text-muted mb-1">
-                      ${Number(listing.amount_raised_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                      {' / '}
-                      ${Number(listing.funding_goal_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })} ({fundingPct.toFixed(0)}%)
+                      ${Number(listing.amount_raised_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })} / ${Number(listing.funding_goal_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })} ({fundingPct.toFixed(0)}%)
                     </p>
                     <div className="h-1.5 rounded-full bg-forest-dark/[0.06] overflow-hidden">
                       <div className="h-full rounded-full bg-accent-green" style={{ width: `${fundingPct}%` }} />
