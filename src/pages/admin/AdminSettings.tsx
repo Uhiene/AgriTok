@@ -127,8 +127,7 @@ function Toggle({
 
 // ── Admin info ────────────────────────────────────────────────
 
-function AdminInfo() {
-  const { profile } = useAuth()
+function AdminInfo({ fullName, kycStatus }: { fullName: string; kycStatus: string }) {
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden">
       <div className="px-5 py-4 border-b border-[rgba(13,43,30,0.07)]">
@@ -138,7 +137,7 @@ function AdminInfo() {
       <div className="px-5 py-5 space-y-3">
         <div className="flex items-center justify-between py-2 border-b border-[rgba(13,43,30,0.05)]">
           <p className="font-body text-sm text-text-muted">Full name</p>
-          <p className="font-body text-sm font-medium text-forest-dark">{profile?.full_name ?? '—'}</p>
+          <p className="font-body text-sm font-medium text-forest-dark">{fullName}</p>
         </div>
         <div className="flex items-center justify-between py-2 border-b border-[rgba(13,43,30,0.05)]">
           <p className="font-body text-sm text-text-muted">Role</p>
@@ -149,7 +148,7 @@ function AdminInfo() {
         <div className="flex items-center justify-between py-2">
           <p className="font-body text-sm text-text-muted">KYC status</p>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-pill bg-accent-green/10 text-accent-green font-body text-xs font-semibold capitalize">
-            {profile?.kyc_status ?? '—'}
+            {kycStatus}
           </span>
         </div>
       </div>
@@ -160,6 +159,7 @@ function AdminInfo() {
 // ── Main ──────────────────────────────────────────────────────
 
 export default function AdminSettings() {
+  const { profile } = useAuth()
   const [saved, setSaved] = useState(false)
 
   const { data: config, isLoading } = useQuery({
@@ -217,7 +217,10 @@ export default function AdminSettings() {
         </p>
       </div>
 
-      <AdminInfo />
+      <AdminInfo
+        fullName={profile?.full_name ?? '—'}
+        kycStatus={profile?.kyc_status ?? '—'}
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
