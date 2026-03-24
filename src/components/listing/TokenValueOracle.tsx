@@ -4,7 +4,7 @@
 import { useMemo } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, Legend,
+  ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { TrendingUp, TrendingDown, Zap, AlertCircle } from 'lucide-react'
 
@@ -80,7 +80,7 @@ export default function TokenValueOracle({ listing, commodity }: Props) {
     [listing, commodity],
   )
 
-  const today = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+  // const today = new Date().toISOString().slice(0, 7) // "YYYY-MM"
 
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden">

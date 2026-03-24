@@ -1,19 +1,14 @@
-// PriceAlertModal — Set a commodity price alert for a listing
-// Stores alert in Supabase price_alerts table
-// A pg_cron + edge function runs hourly to check and send notifications
-
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { X, Bell, BellOff, TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
+import { X, Bell, TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
 
 import { supabase } from '../../lib/supabase/client'
 import type { CommodityPrice } from '../../lib/api/commodities'
 
-// ── Types ─────────────────────────────────────────────────────
+// ── Types ────────
 
 interface PriceAlert {
   id:              string
@@ -40,7 +35,8 @@ const alertSchema = z.object({
   alert_direction: z.enum(['above', 'below']),
 })
 
-type AlertForm = z.infer<typeof alertSchema>
+type AlertFormInput = z.input<typeof alertSchema>
+type AlertForm      = z.output<typeof alertSchema>
 
 // ── Supabase helpers ──────────────────────────────────────────
 
@@ -86,7 +82,7 @@ export default function PriceAlertModal({
     setValue,
     reset,
     formState: { errors },
-  } = useForm<AlertForm>({
+  } = useForm<AlertFormInput, unknown, AlertForm>({
     resolver: zodResolver(alertSchema),
     defaultValues: {
       alert_price:     Math.round(currentPrice * 1.05), // 5% above current by default

@@ -102,14 +102,14 @@ export function buildTokenProjection(
   const lastKnownPrice = dataPoints[dataPoints.length - 1]?.price ?? commodity.currentPrice
 
   // Parse a "Mon YYYY" label into a Date (1st of that month)
-  function parseLabel(label: string): Date {
-    return new Date(`1 ${label}`)
-  }
+  // function parseLabel(label: string): Date {
+  //   return new Date(`1 ${label}`)
+  // }
 
   // Build a price lookup: "Mon YYYY" → price (actual data)
   const priceByMonth = new Map<string, number>()
   for (const dp of dataPoints) {
-    priceByMonth.set(dp.label, dp.price)
+    priceByMonth.set(dp.date, dp.price)
   }
 
   // ── Iterate month by month from listing to harvest ─────────
