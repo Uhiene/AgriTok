@@ -1,4 +1,11 @@
 import { useRef } from "react";
+import chinaFlag    from '../../assets/flags/china.png'
+import ghanaFlag    from '../../assets/flags/ghana.png'
+import indiaFlag    from '../../assets/flags/india.png'
+import nigeriaFlag  from '../../assets/flags/Nigeria.png'
+import cameroonFlag from '../../assets/flags/cameroon.png'
+
+const INVESTOR_FLAGS = [nigeriaFlag, indiaFlag, ghanaFlag, chinaFlag, cameroonFlag]
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase/client";
 import { getAllListings } from "../../lib/supabase/listings";
-import { searchPhotos } from "../../lib/api/unsplash";
+import { getCropImage } from "../../lib/api/unsplash";
 import CropCard from "../../components/CropCard";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -247,10 +254,12 @@ function HeroSection() {
           <FadeInSection delay={0.5}>
             <div className="flex items-center gap-6 pt-2">
               <div className="flex -space-x-2">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
+                {INVESTOR_FLAGS.map((flag, i) => (
+                  <img
                     key={i}
-                    className="w-8 h-8 rounded-full border-2 border-forest-dark bg-gradient-to-br from-forest-mid to-accent-green/60"
+                    src={flag}
+                    alt="investor"
+                    className="w-8 h-8 rounded-full border-2 border-forest-dark object-cover"
                   />
                 ))}
               </div>
@@ -483,12 +492,12 @@ function HowItWorksSection() {
 function FeaturedListingsSection() {
   const { data: listings = [], isLoading } = useFeaturedListings();
 
-  // Fetch one Unsplash image per listing based on crop type
+  // Fetch one crop-specific image per listing, cached by crop type
   const { data: cropImages = [] } = useQuery({
-    queryKey: ["crop-images-featured", listings.map((l) => l.id).join(",")],
-    queryFn: () => searchPhotos("harvest crop field africa", 3),
+    queryKey: ["crop-images-featured", listings.map((l) => l.crop_type).join(",")],
+    queryFn: () => Promise.all(listings.map((l) => getCropImage(l.crop_type))),
     enabled: listings.length > 0,
-    staleTime: 1000 * 60 * 60,
+    staleTime: Infinity,
   });
 
   return (
@@ -543,7 +552,11 @@ function FeaturedListingsSection() {
               <FadeInSection key={listing.id} delay={i * 0.1}>
                 <CropCard
                   listing={listing}
-                  imageUrl={cropImages[i]?.urls.regular}
+                  imageUrl={
+                    cropImages[i] ??
+                    listing.crop_image_url ??
+                    [farm1, farm2, farm3][i % 3]
+                  }
                 />
               </FadeInSection>
             ))}

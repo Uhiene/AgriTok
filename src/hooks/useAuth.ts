@@ -2,72 +2,24 @@ import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { useAuthStore } from '../stores/authStore'
 import { connectWalletToProfile } from '../lib/auth'
-import { supabase } from '../lib/supabase/client'
-import { getProfile } from '../lib/supabase/profiles'
+
+// Pure store reader — no session fetching here.
+// Session is initialised exactly once in AuthBootstrap (App.tsx → initAuth).
 
 export function useAuth() {
-  const { user, profile, isLoading, walletAddress, setUser, setProfile, setLoading } =
-    useAuthStore()
+  const { user, profile, isLoading, walletAddress } = useAuthStore()
   const linkedRef = useRef<string | null>(null)
 
-  // ── 1. Eagerly resolve current session on first mount ────────
-  // onAuthStateChange fires async; this ensures we don't block the UI
-  // waiting for it when a valid session already exists in storage.
-  useEffect(() => {
-    let cancelled = false
-
-    // Safety net: if getSession hangs for any reason, stop blocking the UI
-    const timeout = setTimeout(() => {
-      if (!cancelled) setLoading(false)
-    }, 4000)
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout)
-      if (cancelled) return
-      console.log('[useAuth] getSession result:', session ? `user ${session.user.id}` : 'no session')
-      if (!session) {
-        console.log('[useAuth] no session → setLoading(false), profile stays as persisted')
-        setLoading(false)
-        return
-      }
-      setUser(session.user)
-      try {
-        const p = await getProfile(session.user.id)
-        console.log('[useAuth] getProfile result:', p ? `role=${p.role}` : 'null')
-        if (!cancelled && p) setProfile(p)
-      } catch (err) {
-        console.error('[useAuth] getProfile error:', err)
-        // keep any persisted profile
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })
-
-    return () => { cancelled = true; clearTimeout(timeout) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // ── 2. Auth state changes are subscribed once in AuthBootstrap (App.tsx) ──
-
-  // ── 2. Sync wagmi wallet address with Supabase profile ──────
+  // Sync wagmi wallet address with Supabase profile
   const { address: connectedAddress, isConnected } = useAccount()
 
   useEffect(() => {
-    if (
-      !isConnected ||
-      !connectedAddress ||
-      !user ||
-      linkedRef.current === connectedAddress
-    ) {
-      return
-    }
-
-    // Only write to Supabase when the address actually changed
+    if (!isConnected || !connectedAddress || !user) return
+    if (linkedRef.current === connectedAddress) return
     if (profile?.wallet_address === connectedAddress) {
       linkedRef.current = connectedAddress
       return
     }
-
     linkedRef.current = connectedAddress
     connectWalletToProfile(connectedAddress, user.id).catch(() => {
       linkedRef.current = null
@@ -79,9 +31,9 @@ export function useAuth() {
     profile,
     isLoading,
     walletAddress: walletAddress ?? connectedAddress ?? null,
-    isAuthenticated: !!user,
-    isFarmer: profile?.role === 'farmer',
+    isAuthenticated:  !!user,
+    isFarmer:  profile?.role === 'farmer',
     isInvestor: profile?.role === 'investor',
-    isAdmin: profile?.role === 'admin',
+    isAdmin:   profile?.role === 'admin',
   }
 }

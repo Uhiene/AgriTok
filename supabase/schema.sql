@@ -120,6 +120,7 @@ create table crop_listings (
   status                  listing_status not null default 'open',
   token_contract_address  text,
   description             text           not null default '',
+  featured                boolean        not null default false,
   created_at              timestamptz    not null default now()
 );
 
@@ -314,6 +315,28 @@ create policy "notifications: own update"
   on notifications for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- =============================================================
+-- Table: error_logs
+-- Written by ErrorBoundary in production only
+-- =============================================================
+create table error_logs (
+  id         uuid        primary key default uuid_generate_v4(),
+  message    text        not null,
+  stack      text        not null default '',
+  component  text        not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table error_logs enable row level security;
+
+-- Authenticated users can insert (ErrorBoundary runs client-side)
+create policy "error_logs: authenticated insert"
+  on error_logs for insert
+  with check (auth.role() = 'authenticated');
+
+-- No read access for users — only service role (admin dashboard)
+-- Admins query this via Supabase dashboard or service-role key
 
 -- =============================================================
 -- RPC: increment_listing_funding (atomic, race-condition-safe)

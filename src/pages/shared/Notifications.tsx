@@ -11,6 +11,7 @@ import {
   BellOff,
   CheckCheck,
   Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -118,6 +119,8 @@ export default function Notifications() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError,
+    refetch,
   } = useInfiniteQuery({
     queryKey,
     queryFn: ({ pageParam = 0 }) => fetchPage(profile!.id, pageParam as number),
@@ -229,11 +232,24 @@ export default function Notifications() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={24} className="animate-spin text-accent-green" strokeWidth={2} />
             </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 px-5 text-center">
+              <AlertCircle size={32} className="text-red-400" strokeWidth={1.5} />
+              <p className="font-body text-sm text-text-muted">
+                Could not load notifications. Check your connection.
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="font-body text-xs text-accent-green font-semibold hover:underline"
+              >
+                Try again
+              </button>
+            </div>
           ) : displayed.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16">
               <BellOff size={32} className="text-forest-dark/20" strokeWidth={1.5} />
               <p className="font-body text-sm text-text-muted">
-                {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                {filter === 'unread' ? 'All caught up! No unread notifications.' : 'No notifications yet.'}
               </p>
             </div>
           ) : (

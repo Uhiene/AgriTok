@@ -13,6 +13,7 @@ import { useNotifications } from '../../hooks/useNotifications'
 import { signOut } from '../../lib/auth'
 import NotificationBell from '../notifications/NotificationBell'
 import logo from '../../assets/agritoken-logo.svg'
+import WrongNetworkBanner from '../blockchain/WrongNetworkBanner'
 
 // ── Nav ───────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export default function InvestorLayout() {
   const { unreadCount } = useNotifications(profile?.id)
 
   async function handleSignOut() {
-    await signOut().catch(() => {})
+    signOut()
     navigate('/login', { replace: true })
   }
 
@@ -121,6 +122,8 @@ export default function InvestorLayout() {
 
       {/* ── Main content ──────────────────────────────────── */}
       <div className="flex-1 flex flex-col lg:ml-64">
+
+        <WrongNetworkBanner />
 
         {/* Top header */}
         <header className="sticky top-0 z-30 bg-forest-dark border-b border-white/[0.06] h-14 flex items-center justify-between px-5">

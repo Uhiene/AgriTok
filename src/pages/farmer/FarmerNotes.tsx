@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, ChevronDown, RefreshCw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, ChevronDown, RefreshCw, Sprout } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAuth } from '../../hooks/useAuth'
@@ -46,6 +47,7 @@ function usePullToRefresh(onRefresh: () => Promise<unknown>) {
 export default function FarmerNotes() {
   const { profile } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [selectedFarmId, setSelectedFarmId] = useState<string | 'all'>('all')
   const [showModal, setShowModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -155,10 +157,23 @@ export default function FarmerNotes() {
 
         {/* Empty farms state */}
         {farms.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="font-body text-sm text-text-muted">
-              Register a farm first to start adding notes.
-            </p>
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-accent-green/10 flex items-center justify-center">
+              <Sprout size={28} className="text-forest-mid" strokeWidth={1.5} />
+            </div>
+            <div className="space-y-1">
+              <p className="font-body text-sm font-semibold text-forest-dark">No farms registered yet</p>
+              <p className="font-body text-sm text-text-muted">
+                Register your first farm to start adding observation notes.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/farmer/farms/new')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-pill bg-forest-dark text-white font-body text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              Register a Farm
+            </button>
           </div>
         )}
 

@@ -54,9 +54,36 @@ export async function signInWithGoogle(): Promise<void> {
 
 // ── Sign out ─────────────────────────────────────────────────
 
-export async function signOut(): Promise<void> {
-  await supabase.auth.signOut().catch(() => {})
+export function signOut(): void {
+  // Update store immediately — UI redirects without waiting for the network
   useAuthStore.getState().logout()
+  // Clean up Supabase session in the background
+  supabase.auth.signOut().catch(() => {})
+}
+
+// ── One-time session initialisation ──────────────────────────
+// Call once at app root. Resolves the existing session from storage
+// and hydrates the auth store. Must not be called from individual components.
+
+export async function initAuth(): Promise<void> {
+  const { setUser, setProfile, setLoading } = useAuthStore.getState()
+
+  // Hard timeout — never block the UI more than 4 s
+  const timeout = setTimeout(() => setLoading(false), 4000)
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    clearTimeout(timeout)
+    if (!session) { setLoading(false); return }
+    setUser(session.user)
+    const p = await getProfile(session.user.id).catch(() => null)
+    if (p) setProfile(p)
+  } catch {
+    clearTimeout(timeout)
+    // Keep any profile already persisted in localStorage
+  } finally {
+    setLoading(false)
+  }
 }
 
 // ── Auth state listener ───────────────────────────────────────

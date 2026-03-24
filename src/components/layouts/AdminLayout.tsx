@@ -72,7 +72,7 @@ export default function AdminLayout() {
   const navigate = useNavigate()
 
   async function handleSignOut() {
-    await signOut().catch(() => {})
+    signOut()
     navigate('/login', { replace: true })
   }
 

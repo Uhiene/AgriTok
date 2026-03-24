@@ -10,16 +10,7 @@ export default function ProtectedRoute() {
 
   const hasPersistedProfile = !!profile
 
-  console.log('[ProtectedRoute]', {
-    isAuthenticated,
-    isLoading,
-    hasPersistedProfile,
-    profileRole: profile?.role ?? null,
-    pathname: location.pathname,
-  })
-
   if (isLoading && !hasPersistedProfile) {
-    console.log('[ProtectedRoute] → showing spinner (loading, no persisted profile)')
     // Genuinely first load with no cached session — show spinner
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -29,12 +20,10 @@ export default function ProtectedRoute() {
   }
 
   if (!isAuthenticated && !hasPersistedProfile) {
-    console.log('[ProtectedRoute] → redirecting to /login (not authenticated, no profile)')
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   if (!profile) {
-    console.log('[ProtectedRoute] → redirecting to /login (!profile)')
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

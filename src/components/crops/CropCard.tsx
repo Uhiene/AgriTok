@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { differenceInDays } from 'date-fns'
 import {
   Heart,
@@ -91,18 +92,18 @@ const STATUS_OVERLAY: Partial<Record<CropListing['status'], { label: string; col
 // ── useCropImage hook ─────────────────────────────────────────
 
 function useCropImage(listing: CropListing): string | null {
-  const [url, setUrl] = useState<string | null>(listing.crop_image_url ?? null)
+  // If the listing already has a stored image, use it directly
+  const stored = listing.crop_image_url ?? null
 
-  useEffect(() => {
-    if (listing.crop_image_url) return
-    let active = true
-    getCropImage(listing.crop_type).then((img) => {
-      if (active) setUrl(img)
-    })
-    return () => { active = false }
-  }, [listing.crop_image_url, listing.crop_type])
+  const { data: fetched } = useQuery({
+    queryKey:  ['crop-img', listing.crop_type.toLowerCase()],
+    queryFn:   () => getCropImage(listing.crop_type),
+    enabled:   !stored,
+    staleTime: Infinity,  // same crop type = same image for the entire session
+    gcTime:    Infinity,
+  })
 
-  return url
+  return stored ?? fetched ?? null
 }
 
 // ── Props ─────────────────────────────────────────────────────

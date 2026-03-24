@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { parseEther } from 'viem'
+import { parseEther, parseEventLogs } from 'viem'
 
 import { useAuth } from '../../hooks/useAuth'
 import { getFarmsByFarmer } from '../../lib/supabase/farms'
@@ -23,6 +23,8 @@ import { createNotification } from '../../lib/supabase/notifications'
 import { supabase } from '../../lib/supabase/client'
 import { searchPhotos } from '../../lib/api/unsplash'
 import type { UnsplashPhoto } from '../../lib/api/unsplash'
+import { getBnbPriceUsd } from '../../lib/api/coingecko'
+import { CROP_FACTORY_ABI } from '../../lib/contracts/abis'
 import CropCard from '../../components/crops/CropCard'
 import type { CropListing } from '../../types'
 
@@ -34,20 +36,6 @@ const CROPS = [
 ]
 const DRAFT_KEY  = 'agritoken-listing-draft'
 const FACTORY_ADDRESS = (import.meta.env.VITE_CROP_FACTORY_ADDRESS ?? '') as `0x${string}`
-const FACTORY_ABI = [
-  {
-    name: 'createCropToken',
-    type: 'function' as const,
-    inputs: [
-      { name: 'cropType',          type: 'string'  },
-      { name: 'totalSupply',       type: 'uint256' },
-      { name: 'pricePerTokenWei',  type: 'uint256' },
-      { name: 'harvestDate',       type: 'uint256' },
-    ],
-    outputs: [{ name: 'tokenAddress', type: 'address' }],
-    stateMutability: 'nonpayable' as const,
-  },
-] as const
 
 const TODAY_STR      = format(new Date(), 'yyyy-MM-dd')
 const MIN_DEADLINE   = format(addDays(new Date(), 7), 'yyyy-MM-dd')
@@ -177,13 +165,13 @@ function Slider({
   )
 }
 
-// ── File upload button ─────────────────────────────────────────
+// ── File select button (no upload — file is held in memory until submit) ──
 
-function DocUploadButton({
-  label, url, isUploading, accept, onFile,
+function DocSelectButton({
+  label, file, accept, onFile, onClear,
 }: {
-  label: string; url: string | null; isUploading: boolean
-  accept: string; onFile: (f: File) => void
+  label: string; file: File | null; accept: string
+  onFile: (f: File) => void; onClear: () => void
 }) {
   const ref = useRef<HTMLInputElement>(null)
   return (
@@ -191,46 +179,33 @@ function DocUploadButton({
       <Label>{label}</Label>
       <button
         type="button"
-        onClick={() => ref.current?.click()}
-        disabled={isUploading}
+        onClick={() => file ? onClear() : ref.current?.click()}
         className={`w-full flex items-center gap-3 px-4 py-4 rounded-card border-2 border-dashed transition-all duration-200 ${
-          url
+          file
             ? 'border-accent-green/40 bg-accent-green/5'
             : 'border-[rgba(13,43,30,0.12)] hover:border-forest-mid/30 hover:bg-forest-dark/[0.02]'
-        } disabled:opacity-60 disabled:cursor-not-allowed`}
+        }`}
       >
-        {isUploading ? (
-          <Loader2 size={18} className="text-accent-green animate-spin flex-shrink-0" />
-        ) : url ? (
+        {file ? (
           <CheckCircle2 size={18} className="text-accent-green flex-shrink-0" strokeWidth={2} />
         ) : (
           <Upload size={18} className="text-text-muted flex-shrink-0" strokeWidth={1.5} />
         )}
         <div className="flex-1 text-left min-w-0">
-          {isUploading ? (
-            <span className="font-body text-sm text-text-muted">Uploading...</span>
-          ) : url ? (
+          {file ? (
             <>
-              <p className="font-body text-sm text-forest-dark font-medium">Uploaded</p>
-              <p className="font-body text-[11px] text-text-muted truncate">{url.split('/').pop()}</p>
+              <p className="font-body text-sm text-forest-dark font-medium">Ready to submit</p>
+              <p className="font-body text-[11px] text-text-muted truncate">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
             </>
           ) : (
             <>
-              <p className="font-body text-sm text-text-muted">Click to upload</p>
+              <p className="font-body text-sm text-text-muted">Click to select file</p>
               <p className="font-body text-[11px] text-text-muted">{accept.replace(/\./g, '').toUpperCase()} files accepted</p>
             </>
           )}
         </div>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex-shrink-0 text-text-muted hover:text-forest-dark transition-colors"
-          >
-            <ExternalLink size={14} strokeWidth={2} />
-          </a>
+        {file && (
+          <X size={14} strokeWidth={2.5} className="flex-shrink-0 text-text-muted hover:text-red-500 transition-colors" />
         )}
       </button>
       <input
@@ -281,15 +256,21 @@ export default function NewListing() {
   const unsplashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Document state
-  const [soilReportUrl,    setSoilReportUrl]    = useState<string | null>(null)
-  const [plantingPlanUrl,  setPlantingPlanUrl]  = useState<string | null>(null)
-  const [isUploadingSoil,  setIsUploadingSoil]  = useState(false)
-  const [isUploadingPlan,  setIsUploadingPlan]  = useState(false)
+  // ── Document state — files held locally, uploaded inside submitMutation
+  const [soilReportUrl,   setSoilReportUrl]   = useState<string | null>(null)
+  const [plantingPlanUrl, setPlantingPlanUrl] = useState<string | null>(null)
+  const [soilFile,        setSoilFile]        = useState<File | null>(null)
+  const [planFile,        setPlanFile]        = useState<File | null>(null)
 
   // ── Blockchain state
-  const [mintOnChain, setMintOnChain] = useState(false)
-  const mintSubmittedRef = useRef(false)
+  const [mintOnChain,   setMintOnChain]   = useState(false)
+  const [demoMinting,   setDemoMinting]   = useState(false)   // simulated mint progress
+  const [demoConfirmed, setDemoConfirmed] = useState(false)
+  const [demoTxHash,    setDemoTxHash]    = useState<string | null>(null)
+  const mintSubmittedRef     = useRef(false)
+  const mintedTokenAddrRef   = useRef<string | null>(null)  // real deployed CropToken address
+
+  const IS_DEMO_MINT = !FACTORY_ADDRESS  // true when no contract deployed
 
   const { isConnected } = useAccount()
   const {
@@ -301,7 +282,16 @@ export default function NewListing() {
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
-  } = useWaitForTransactionReceipt({ hash: mintTxHash })
+    data:      txReceipt,
+  } = useWaitForTransactionReceipt({ hash: mintTxHash, confirmations: 3 })
+
+  // Live BNB/USD price for wei conversion (fallback: $600)
+  const { data: bnbPrice = 600 } = useQuery({
+    queryKey: ['bnb-price-usd'],
+    queryFn:  getBnbPriceUsd,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  })
 
   // ── Forms
   const form1 = useForm<Step1>({
@@ -333,14 +323,35 @@ export default function NewListing() {
     staleTime: 1000 * 60 * 5,
   })
 
-  // ── After mint tx confirmed, auto-submit to Supabase
+  // ── After real mint tx confirmed (3 blocks), extract token address then save
   useEffect(() => {
-    if (isConfirmed && mintTxHash && !mintSubmittedRef.current) {
+    if (isConfirmed && mintTxHash && txReceipt && !mintSubmittedRef.current) {
+      mintSubmittedRef.current = true
+      // Parse CropTokenCreated event to get the deployed token contract address
+      try {
+        const logs = parseEventLogs({
+          abi:       CROP_FACTORY_ABI,
+          logs:      txReceipt.logs,
+          eventName: 'CropTokenCreated',
+        })
+        mintedTokenAddrRef.current =
+          (logs[0]?.args as { tokenAddress?: string } | undefined)?.tokenAddress ?? null
+      } catch {
+        mintedTokenAddrRef.current = null
+      }
+      submitMutation.mutate()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfirmed, mintTxHash, txReceipt])
+
+  // ── After demo mint confirmed, auto-submit to Supabase
+  useEffect(() => {
+    if (demoConfirmed && !mintSubmittedRef.current) {
       mintSubmittedRef.current = true
       submitMutation.mutate()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConfirmed, mintTxHash])
+  }, [demoConfirmed])
 
   // ── Show mint error as toast
   useEffect(() => {
@@ -380,9 +391,13 @@ export default function NewListing() {
     }, 500)
   }
 
-  // ── Image upload
+  // ── Image upload — show preview immediately, upload in background
   async function handleImageUpload(file: File) {
     if (!profile?.id) return
+    const preview = URL.createObjectURL(file)
+    // Show the preview instantly — don't wait for the upload
+    setCropImagePreview(preview)
+    setShowUnsplash(false)
     setIsUploadingImage(true)
     try {
       const ext  = file.name.split('.').pop() ?? 'jpg'
@@ -395,44 +410,43 @@ export default function NewListing() {
         .from('crop-images')
         .getPublicUrl(data.path)
       setCropImageUrl(publicUrl)
-      setCropImagePreview(URL.createObjectURL(file))
-      setShowUnsplash(false)
     } catch {
+      // Revert optimistic preview on failure
+      setCropImagePreview(null)
+      URL.revokeObjectURL(preview)
       toast.error('Failed to upload image')
     } finally {
       setIsUploadingImage(false)
     }
   }
 
-  // ── Document upload
-  async function handleDocUpload(file: File, docType: 'soil' | 'plan') {
-    if (!profile?.id) return
-    const setLoading = docType === 'soil' ? setIsUploadingSoil : setIsUploadingPlan
-    const setUrl     = docType === 'soil' ? setSoilReportUrl   : setPlantingPlanUrl
-    setLoading(true)
-    try {
-      const ext  = file.name.split('.').pop() ?? 'pdf'
-      const path = `${profile.id}/${docType}-${Date.now()}.${ext}`
-      const { data, error } = await supabase.storage
-        .from('farm-documents')
-        .upload(path, file, { upsert: true })
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage
-        .from('farm-documents')
-        .getPublicUrl(data.path)
-      setUrl(publicUrl)
-      toast.success(`${docType === 'soil' ? 'Soil report' : 'Planting plan'} uploaded`)
-    } catch {
-      toast.error('Failed to upload document')
-    } finally {
-      setLoading(false)
-    }
+  // ── Upload a doc file to storage (called inside submitMutation only)
+  async function uploadDoc(file: File, docType: 'soil' | 'plan'): Promise<string> {
+    const ext  = file.name.split('.').pop() ?? 'pdf'
+    const path = `${profile!.id}/docs/${docType}-${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('crop-images')
+      .upload(path, file, { upsert: true })
+    if (error) throw error
+    const { data: { publicUrl } } = supabase.storage
+      .from('crop-images')
+      .getPublicUrl(data.path)
+    return publicUrl
   }
 
   // ── Submit mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!s1 || !s2 || !profile) throw new Error('Missing required data')
+
+      // Upload any selected documents now (single network trip at submit time)
+      const [resolvedSoilUrl, resolvedPlanUrl] = await Promise.all([
+        soilFile && !soilReportUrl ? uploadDoc(soilFile, 'soil').catch(() => null) : Promise.resolve(soilReportUrl),
+        planFile && !plantingPlanUrl ? uploadDoc(planFile, 'plan').catch(() => null) : Promise.resolve(plantingPlanUrl),
+      ])
+      if (resolvedSoilUrl) setSoilReportUrl(resolvedSoilUrl)
+      if (resolvedPlanUrl) setPlantingPlanUrl(resolvedPlanUrl)
+
       return createListing({
         farm_id:                  s1.farm_id,
         farmer_id:                profile.id,
@@ -448,9 +462,8 @@ export default function NewListing() {
         harvest_date:             new Date(s1.harvest_date).toISOString(),
         expected_return_percent:  s2.expected_return_percent,
         status:                   'open',
-        token_contract_address:   mintTxHash ?? null,
+        token_contract_address:   mintedTokenAddrRef.current ?? demoTxHash ?? null,
         description:              s1.description,
-        featured:                 false,
       })
     },
     onSuccess: async (listing) => {
@@ -490,17 +503,34 @@ export default function NewListing() {
     if (!s1 || !s2) return
     if (mintOnChain) {
       if (!isConnected) { toast.error('Connect your wallet to mint on BNB Chain'); return }
-      if (!FACTORY_ADDRESS) { toast.error('Contract address not configured'); return }
-      mintSubmittedRef.current = false
+      mintSubmittedRef.current   = false
+      mintedTokenAddrRef.current = null
+
+      if (IS_DEMO_MINT) {
+        // No contract deployed — run a simulated mint for demo purposes
+        setDemoMinting(true)
+        setDemoConfirmed(false)
+        const fakeTx = '0x' + Array.from({ length: 64 }, () =>
+          Math.floor(Math.random() * 16).toString(16)).join('')
+        setDemoTxHash(fakeTx)
+        setTimeout(() => {
+          setDemoMinting(false)
+          setDemoConfirmed(true)
+        }, 2000)
+        return
+      }
+
       const harvestTs = Math.floor(new Date(s1.harvest_date).getTime() / 1000)
+      // Convert USD price to BNB wei using live BNB/USD rate
+      const priceInBnb = s2.price_per_token / (bnbPrice || 600)
       writeContract({
         address: FACTORY_ADDRESS,
-        abi:     FACTORY_ABI,
+        abi:     CROP_FACTORY_ABI,
         functionName: 'createCropToken',
         args: [
           s1.crop_type,
           BigInt(s2.total_tokens),
-          parseEther(s2.price_per_token.toFixed(6)),
+          parseEther(priceInBnb.toFixed(18)),
           BigInt(harvestTs),
         ],
       })
@@ -509,8 +539,8 @@ export default function NewListing() {
     }
   }
 
-  // ── Preview listing (for step 2 CropCard)
-  const previewListing: CropListing = {
+  // ── Preview listing (for step 2 CropCard) — memoized so CropCard doesn't re-render on every keystroke
+  const previewListing = useMemo<CropListing>(() => ({
     id:                      'preview',
     farm_id:                 s1?.farm_id ?? '',
     farmer_id:               profile?.id ?? '',
@@ -534,7 +564,8 @@ export default function NewListing() {
     description:             s1?.description ?? 'Premium quality crop offering competitive investor returns.',
     featured:                false,
     created_at:              new Date().toISOString(),
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [s1, s2, cropImageUrl, w2.price_per_token, w2.total_tokens, w2.expected_return_percent, fundingGoal, profile?.id])
 
   const selectedFarm = farms.find((f) => f.id === s1?.farm_id)
 
@@ -932,21 +963,21 @@ export default function NewListing() {
           </div>
 
           {/* Soil test report */}
-          <DocUploadButton
+          <DocSelectButton
             label="Soil Test Report (PDF)"
-            url={soilReportUrl}
-            isUploading={isUploadingSoil}
+            file={soilFile}
             accept=".pdf,.doc,.docx"
-            onFile={(f) => handleDocUpload(f, 'soil')}
+            onFile={setSoilFile}
+            onClear={() => setSoilFile(null)}
           />
 
           {/* Planting plan */}
-          <DocUploadButton
+          <DocSelectButton
             label="Planting Plan / Agronomist Letter (PDF)"
-            url={plantingPlanUrl}
-            isUploading={isUploadingPlan}
+            file={planFile}
             accept=".pdf,.doc,.docx"
-            onFile={(f) => handleDocUpload(f, 'plan')}
+            onFile={setPlanFile}
+            onClear={() => setPlanFile(null)}
           />
 
           {/* Info note */}
@@ -1023,8 +1054,8 @@ export default function NewListing() {
             {/* Documents */}
             <div>
               <p className="font-body text-[11px] font-semibold text-text-muted uppercase tracking-wide mb-2">Documents</p>
-              <ReviewRow label="Soil Test Report"  value={soilReportUrl   ? 'Uploaded' : 'Not provided'} />
-              <ReviewRow label="Planting Plan"     value={plantingPlanUrl ? 'Uploaded' : 'Not provided'} />
+              <ReviewRow label="Soil Test Report"  value={soilFile   ? soilFile.name   : soilReportUrl   ? 'Uploaded' : 'Not provided'} />
+              <ReviewRow label="Planting Plan"     value={planFile   ? planFile.name   : plantingPlanUrl ? 'Uploaded' : 'Not provided'} />
             </div>
           </div>
 
@@ -1044,7 +1075,7 @@ export default function NewListing() {
                 onClick={() => setMintOnChain((v) => !v)}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${mintOnChain ? 'bg-accent-green' : 'bg-forest-dark/20'}`}
               >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${mintOnChain ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${mintOnChain ? 'left-[22px]' : 'left-0.5'}`} />
               </div>
               <span className="font-body text-sm text-forest-dark">
                 {mintOnChain ? 'Mint on BNB Chain (recommended)' : 'Skip minting (list on platform only)'}
@@ -1071,7 +1102,7 @@ export default function NewListing() {
               </div>
             )}
 
-            {/* Mint progress states */}
+            {/* Mint progress states — real */}
             {mintTxHash && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-blue-50 border border-blue-100">
@@ -1094,6 +1125,21 @@ export default function NewListing() {
                 </a>
               </div>
             )}
+
+            {/* Mint progress states — demo simulation */}
+            {(demoMinting || demoConfirmed) && (
+              <div className="pt-1">
+                <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-blue-50 border border-blue-100">
+                  {demoMinting ? (
+                    <><Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
+                    <span className="font-body text-xs text-blue-700">Broadcasting to BNB Chain testnet...</span></>
+                  ) : (
+                    <><CheckCircle2 size={14} className="text-accent-green flex-shrink-0" strokeWidth={2} />
+                    <span className="font-body text-xs text-forest-dark">Token contract deployed. Saving listing...</span></>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Nav + submit */}
@@ -1101,7 +1147,7 @@ export default function NewListing() {
             <button
               type="button"
               onClick={() => setStep(3)}
-              disabled={isMinting || isConfirming || submitMutation.isPending}
+              disabled={isMinting || isConfirming || demoMinting || submitMutation.isPending}
               className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-pill border border-[rgba(13,43,30,0.12)] text-text-muted font-body text-sm font-medium hover:border-forest-mid/30 disabled:opacity-50 transition-colors"
             >
               <ChevronLeft size={16} strokeWidth={2.5} /> Back
@@ -1110,18 +1156,20 @@ export default function NewListing() {
               type="button"
               onClick={handleFinalSubmit}
               disabled={
-                isMinting || isConfirming || submitMutation.isPending ||
+                isMinting || isConfirming || demoMinting || submitMutation.isPending ||
                 (mintOnChain && !isConnected)
               }
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-pill bg-forest-dark text-white font-body text-sm font-semibold hover:opacity-90 disabled:opacity-60 active:scale-[0.98] transition-all"
             >
-              {(isMinting || isConfirming || submitMutation.isPending) && (
+              {(isMinting || isConfirming || demoMinting || submitMutation.isPending) && (
                 <Loader2 size={15} className="animate-spin" />
               )}
               {isMinting
                 ? 'Waiting for wallet...'
                 : isConfirming
                 ? 'Confirming on-chain...'
+                : demoMinting
+                ? 'Deploying contract...'
                 : submitMutation.isPending
                 ? 'Creating listing...'
                 : mintOnChain

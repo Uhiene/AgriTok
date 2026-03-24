@@ -12,17 +12,8 @@ interface RoleRouteProps {
 export default function RoleRoute({ role }: RoleRouteProps) {
   const { profile, isLoading } = useAuth()
 
-  console.log('[RoleRoute]', {
-    requiredRole: role,
-    actualRole: profile?.role ?? null,
-    isLoading,
-  })
-
   // If still loading AND no profile yet → wait
-  if (isLoading && !profile) {
-    console.log('[RoleRoute] → waiting (still loading)')
-    return null
-  }
+  if (isLoading && !profile) return null
 
   // Profile loaded — check role
   if (!profile || profile.role !== role) {
@@ -30,10 +21,8 @@ export default function RoleRoute({ role }: RoleRouteProps) {
       profile?.role === 'farmer'   ? '/farmer/dashboard'   :
       profile?.role === 'admin'    ? '/admin/dashboard'    :
                                      '/investor/dashboard'
-    console.log(`[RoleRoute] → role mismatch, redirecting to ${dest}`)
     return <Navigate to={dest} replace />
   }
 
-  console.log('[RoleRoute] → role OK, rendering outlet')
   return <Outlet />
 }

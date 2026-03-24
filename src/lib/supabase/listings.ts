@@ -62,7 +62,7 @@ export async function getListing(listingId: string): Promise<CropListing> {
 }
 
 export async function createListing(
-  listing: Omit<CropListing, 'id' | 'created_at'>,
+  listing: Omit<CropListing, 'id' | 'created_at' | 'featured'>,
 ): Promise<CropListing> {
   const { data, error } = await supabase
     .from('crop_listings')

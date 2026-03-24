@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, MapPin, Star, ShieldCheck, Clock, TrendingUp,
   TrendingDown, Minus, Plus, Sprout, AlertTriangle,
-  NotebookText, Leaf, FileText,
+  NotebookText, Leaf, FileText, Bell,
 } from 'lucide-react'
 import Map, { Marker } from 'react-map-gl/mapbox'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -21,6 +21,8 @@ import PriceChart from '../../components/market/PriceChart'
 import WeatherWidget from '../../components/weather/WeatherWidget'
 import InvestModal from '../../components/invest/InvestModal'
 import MarketIntelligence from '../../components/advisory/MarketIntelligence'
+import TokenValueOracle from '../../components/listing/TokenValueOracle'
+import PriceAlertModal from '../../components/listing/PriceAlertModal'
 import { getCropImage } from '../../lib/api/unsplash'
 import { useAuth } from '../../hooks/useAuth'
 import type { CropListing, Investment } from '../../types'
@@ -181,9 +183,10 @@ export default function InvestorListingDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [tokenAmount, setTokenAmount] = useState(1)
-  const [showModal,   setShowModal]   = useState(false)
-  const [heroSrc,     setHeroSrc]     = useState<string | null>(null)
+  const [tokenAmount,    setTokenAmount]    = useState(1)
+  const [showModal,      setShowModal]      = useState(false)
+  const [showAlertModal, setShowAlertModal] = useState(false)
+  const [heroSrc,        setHeroSrc]        = useState<string | null>(null)
 
   // Realtime: live funding updates + presence viewer count
   useRealtimeListingFunding(id)
@@ -520,6 +523,11 @@ export default function InvestorListingDetail() {
           )
         })()}
 
+        {/* ── Token Value Oracle ──────────────────────────────── */}
+        {commodity && (
+          <TokenValueOracle listing={listing} commodity={commodity} />
+        )}
+
         {/* ── Farm map ────────────────────────────────────────── */}
         {farm && MAPBOX_TOKEN && (
           <div className="bg-white rounded-card shadow-card overflow-hidden">
@@ -677,6 +685,17 @@ export default function InvestorListingDetail() {
         <div className="max-w-2xl mx-auto px-4 py-3">
           {isOpen ? (
             <div className="flex items-center gap-3">
+              {/* Price alert button */}
+              {commodity && user && (
+                <button
+                  onClick={() => setShowAlertModal(true)}
+                  className="flex-shrink-0 w-9 h-9 rounded-full border border-[rgba(13,43,30,0.15)] flex items-center justify-center text-forest-mid hover:bg-forest-dark/[0.04] transition-colors"
+                  title="Set price alert"
+                >
+                  <Bell size={15} strokeWidth={2} />
+                </button>
+              )}
+
               {/* Stepper */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
@@ -724,12 +743,21 @@ export default function InvestorListingDetail() {
         </div>
       </div>
 
-      {/* ── InvestModal (built next prompt) ─────────────────────── */}
       {showModal && (
         <InvestModal
           listing={listing}
           tokenAmount={tokenAmount}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {showAlertModal && commodity && user && (
+        <PriceAlertModal
+          listingId={listing.id}
+          investorId={user.id}
+          cropType={listing.crop_type}
+          commodity={commodity}
+          onClose={() => setShowAlertModal(false)}
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
@@ -6,127 +7,137 @@ import FarmerLayout from './components/layouts/FarmerLayout'
 import InvestorLayout from './components/layouts/InvestorLayout'
 import AdminLayout from './components/layouts/AdminLayout'
 
+// ── Lazy page imports — each page only loads when first visited ──
+
 // Auth
-import Landing from './pages/auth/Landing'
-import Login from './pages/auth/Login'
-import Register from './pages/auth/Register'
-import RegisterFarmer from './pages/auth/RegisterFarmer'
-import RegisterInvestor from './pages/auth/RegisterInvestor'
+const Landing          = lazy(() => import('./pages/auth/Landing'))
+const Login            = lazy(() => import('./pages/auth/Login'))
+const Register         = lazy(() => import('./pages/auth/Register'))
+const RegisterFarmer   = lazy(() => import('./pages/auth/RegisterFarmer'))
+const RegisterInvestor = lazy(() => import('./pages/auth/RegisterInvestor'))
 
 // Farmer
-import FarmerDashboard from './pages/farmer/FarmerDashboard'
-import FarmerFarms from './pages/farmer/FarmerFarms'
-import NewFarm from './pages/farmer/NewFarm'
-import FarmDetail from './pages/farmer/FarmDetail'
-import FarmerListings from './pages/farmer/MyListings'
-import NewListing from './pages/farmer/NewListing'
-import ListingDetail from './pages/farmer/ListingDetail'
-import HarvestReport from './pages/farmer/HarvestReport'
-import SharedWallet from './pages/shared/Wallet'
-import FarmerNotes from './pages/farmer/FarmerNotes'
-import FarmerProfile from './pages/farmer/FarmerProfile'
+const FarmerDashboard = lazy(() => import('./pages/farmer/FarmerDashboard'))
+const FarmerFarms     = lazy(() => import('./pages/farmer/FarmerFarms'))
+const NewFarm         = lazy(() => import('./pages/farmer/NewFarm'))
+const FarmDetail      = lazy(() => import('./pages/farmer/FarmDetail'))
+const FarmerListings  = lazy(() => import('./pages/farmer/MyListings'))
+const NewListing      = lazy(() => import('./pages/farmer/NewListing'))
+const ListingDetail   = lazy(() => import('./pages/farmer/ListingDetail'))
+const HarvestReport   = lazy(() => import('./pages/farmer/HarvestReport'))
+const FarmerNotes     = lazy(() => import('./pages/farmer/FarmerNotes'))
+const FarmerProfile   = lazy(() => import('./pages/farmer/FarmerProfile'))
 
 // Investor
-import InvestorDashboard from './pages/investor/InvestorDashboard'
-import InvestorMarketplace from './pages/investor/Marketplace'
-import MarketplaceDetail from './pages/investor/ListingDetail'
-import InvestorPortfolio from './pages/investor/InvestorPortfolio'
-import PortfolioDetail from './pages/investor/PortfolioDetail'
-import InvestorTransactions from './pages/investor/InvestorTransactions'
-// InvestorWallet replaced by SharedWallet
-import InvestorProfile from './pages/investor/InvestorProfile'
+const InvestorDashboard   = lazy(() => import('./pages/investor/InvestorDashboard'))
+const InvestorMarketplace = lazy(() => import('./pages/investor/Marketplace'))
+const MarketplaceDetail   = lazy(() => import('./pages/investor/ListingDetail'))
+const InvestorPortfolio   = lazy(() => import('./pages/investor/InvestorPortfolio'))
+const PortfolioDetail     = lazy(() => import('./pages/investor/PortfolioDetail'))
+const InvestorTransactions = lazy(() => import('./pages/investor/InvestorTransactions'))
+const InvestorProfile     = lazy(() => import('./pages/investor/InvestorProfile'))
 
 // Admin
-import AdminDashboard from './pages/admin/AdminDashboard'
-import KYCReview from './pages/admin/KYCReview'
-import HarvestVerification from './pages/admin/HarvestVerification'
-import PlatformListings from './pages/admin/PlatformListings'
-import AdminFarmers from './pages/admin/AdminFarmers'
-import AdminInvestments from './pages/admin/AdminInvestments'
-import AdminPayouts from './pages/admin/AdminPayouts'
-import AdminSettings from './pages/admin/AdminSettings'
+const AdminDashboard      = lazy(() => import('./pages/admin/AdminDashboard'))
+const KYCReview           = lazy(() => import('./pages/admin/KYCReview'))
+const HarvestVerification = lazy(() => import('./pages/admin/HarvestVerification'))
+const PlatformListings    = lazy(() => import('./pages/admin/PlatformListings'))
+const AdminFarmers        = lazy(() => import('./pages/admin/AdminFarmers'))
+const AdminInvestments    = lazy(() => import('./pages/admin/AdminInvestments'))
+const AdminPayouts        = lazy(() => import('./pages/admin/AdminPayouts'))
+const AdminSettings       = lazy(() => import('./pages/admin/AdminSettings'))
 
 // Shared
-import Notifications from './pages/shared/Notifications'
-import Settings from './pages/shared/Settings'
+const SharedWallet  = lazy(() => import('./pages/shared/Wallet'))
+const Notifications = lazy(() => import('./pages/shared/Notifications'))
+const Settings      = lazy(() => import('./pages/shared/Settings'))
+
+// ── Page-level loading fallback ───────────────────────────────
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-accent-green border-t-transparent animate-spin" />
+    </div>
+  )
+}
+
+function S({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
+}
+
+// ── Router ────────────────────────────────────────────────────
 
 export const router = createBrowserRouter([
   // ── Public ────────────────────────────────────────────────
-  { path: '/', element: <Landing /> },
-  { path: '/login', element: <Login /> },
-  { path: '/register', element: <Register /> },
-  { path: '/register/farmer', element: <RegisterFarmer /> },
-  { path: '/register/investor', element: <RegisterInvestor /> },
+  { path: '/',                  element: <S><Landing /></S> },
+  { path: '/login',             element: <S><Login /></S> },
+  { path: '/register',          element: <S><Register /></S> },
+  { path: '/register/farmer',   element: <S><RegisterFarmer /></S> },
+  { path: '/register/investor', element: <S><RegisterInvestor /></S> },
 
   // ── Protected (any authenticated user) ───────────────────
   {
     element: <ProtectedRoute />,
     children: [
-      // Shared protected pages
-      { path: '/notifications', element: <Notifications /> },
-      { path: '/settings', element: <Settings /> },
+      { path: '/notifications', element: <S><Notifications /></S> },
+      { path: '/settings',      element: <S><Settings /></S> },
 
-      // ── Farmer role only ───────────────────────────────
+      // ── Farmer ────────────────────────────────────────
       {
         element: <RoleRoute role="farmer" />,
-        children: [
-          {
-            element: <FarmerLayout />,
-            children: [
-              { path: '/farmer/dashboard', element: <FarmerDashboard /> },
-              { path: '/farmer/farms', element: <FarmerFarms /> },
-              { path: '/farmer/farms/new', element: <NewFarm /> },
-              { path: '/farmer/farms/:id', element: <FarmDetail /> },
-              { path: '/farmer/listings', element: <FarmerListings /> },
-              { path: '/farmer/listings/new', element: <NewListing /> },
-              { path: '/farmer/listings/:id', element: <ListingDetail /> },
-              { path: '/farmer/harvest/:id', element: <HarvestReport /> },
-              { path: '/farmer/wallet', element: <SharedWallet /> },
-              { path: '/farmer/notes', element: <FarmerNotes /> },
-              { path: '/farmer/profile', element: <FarmerProfile /> },
-            ],
-          },
-        ],
+        children: [{
+          element: <FarmerLayout />,
+          children: [
+            { path: '/farmer/dashboard',     element: <S><FarmerDashboard /></S> },
+            { path: '/farmer/farms',         element: <S><FarmerFarms /></S> },
+            { path: '/farmer/farms/new',     element: <S><NewFarm /></S> },
+            { path: '/farmer/farms/:id',     element: <S><FarmDetail /></S> },
+            { path: '/farmer/listings',      element: <S><FarmerListings /></S> },
+            { path: '/farmer/listings/new',  element: <S><NewListing /></S> },
+            { path: '/farmer/listings/:id',  element: <S><ListingDetail /></S> },
+            { path: '/farmer/harvest/:id',   element: <S><HarvestReport /></S> },
+            { path: '/farmer/wallet',        element: <S><SharedWallet /></S> },
+            { path: '/farmer/notes',         element: <S><FarmerNotes /></S> },
+            { path: '/farmer/profile',       element: <S><FarmerProfile /></S> },
+          ],
+        }],
       },
 
-      // ── Admin role only ────────────────────────────────
+      // ── Admin ─────────────────────────────────────────
       {
         element: <RoleRoute role="admin" />,
-        children: [
-          {
-            element: <AdminLayout />,
-            children: [
-              { path: '/admin/dashboard',   element: <AdminDashboard /> },
-              { path: '/admin/kyc',         element: <KYCReview /> },
-              { path: '/admin/harvest',     element: <HarvestVerification /> },
-              { path: '/admin/listings',    element: <PlatformListings /> },
-              { path: '/admin/farmers',     element: <AdminFarmers /> },
-              { path: '/admin/investments', element: <AdminInvestments /> },
-              { path: '/admin/payouts',     element: <AdminPayouts /> },
-              { path: '/admin/settings',    element: <AdminSettings /> },
-            ],
-          },
-        ],
+        children: [{
+          element: <AdminLayout />,
+          children: [
+            { path: '/admin/dashboard',   element: <S><AdminDashboard /></S> },
+            { path: '/admin/kyc',         element: <S><KYCReview /></S> },
+            { path: '/admin/harvest',     element: <S><HarvestVerification /></S> },
+            { path: '/admin/listings',    element: <S><PlatformListings /></S> },
+            { path: '/admin/farmers',     element: <S><AdminFarmers /></S> },
+            { path: '/admin/investments', element: <S><AdminInvestments /></S> },
+            { path: '/admin/payouts',     element: <S><AdminPayouts /></S> },
+            { path: '/admin/settings',    element: <S><AdminSettings /></S> },
+          ],
+        }],
       },
 
-      // ── Investor role only ─────────────────────────────
+      // ── Investor ──────────────────────────────────────
       {
         element: <RoleRoute role="investor" />,
-        children: [
-          {
-            element: <InvestorLayout />,
-            children: [
-              { path: '/investor/dashboard',      element: <InvestorDashboard /> },
-              { path: '/investor/marketplace',    element: <InvestorMarketplace /> },
-              { path: '/investor/marketplace/:id',element: <MarketplaceDetail /> },
-              { path: '/investor/portfolio',      element: <InvestorPortfolio /> },
-              { path: '/investor/portfolio/:id',  element: <PortfolioDetail /> },
-              { path: '/investor/transactions',   element: <InvestorTransactions /> },
-              { path: '/investor/wallet',         element: <SharedWallet /> },
-              { path: '/investor/profile',        element: <InvestorProfile /> },
-            ],
-          },
-        ],
+        children: [{
+          element: <InvestorLayout />,
+          children: [
+            { path: '/investor/dashboard',       element: <S><InvestorDashboard /></S> },
+            { path: '/investor/marketplace',     element: <S><InvestorMarketplace /></S> },
+            { path: '/investor/marketplace/:id', element: <S><MarketplaceDetail /></S> },
+            { path: '/investor/portfolio',       element: <S><InvestorPortfolio /></S> },
+            { path: '/investor/portfolio/:id',   element: <S><PortfolioDetail /></S> },
+            { path: '/investor/transactions',    element: <S><InvestorTransactions /></S> },
+            { path: '/investor/wallet',          element: <S><SharedWallet /></S> },
+            { path: '/investor/profile',         element: <S><InvestorProfile /></S> },
+          ],
+        }],
       },
     ],
   },

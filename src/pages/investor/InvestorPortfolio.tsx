@@ -29,6 +29,9 @@ import { supabase } from '../../lib/supabase/client'
 import { getInvestmentsWithListings } from '../../lib/supabase/investments'
 import type { InvestmentWithListing } from '../../lib/supabase/investments'
 import { getCropImage } from '../../lib/api/unsplash'
+import { fetchCommodityPrices, CROP_TYPE_TO_COMMODITY } from '../../lib/api/commodities'
+import type { CommodityPrice } from '../../lib/api/commodities'
+import { valuatePosition } from '../../lib/api/tokenValuation'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -370,6 +373,12 @@ export default function InvestorPortfolio() {
     staleTime: 1000 * 60 * 2,
   })
 
+  const { data: commodities = [] } = useQuery({
+    queryKey: ['commodity-prices'],
+    queryFn:  fetchCommodityPrices,
+    staleTime: 1000 * 60 * 5,
+  })
+
   // Realtime: refresh portfolio when any investment status changes
   useEffect(() => {
     if (!profile?.id) return
@@ -399,9 +408,52 @@ export default function InvestorPortfolio() {
     const totalReturns = investments
       .filter((i) => i.status === 'paid_out')
       .reduce((s, i) => s + estReturn(i), 0)
-    const portfolioValue = totalInvested + totalReturns
-    return { totalInvested, totalReturns, portfolioValue }
-  }, [investments])
+
+    // Mark-to-market for active (confirmed) positions using live commodity prices
+    const getCommodity = (cropType: string): CommodityPrice | undefined => {
+      const name = CROP_TYPE_TO_COMMODITY[cropType.toLowerCase()]
+      return commodities.find((c) => c.name === name)
+    }
+
+    let totalMarketValue  = 0
+    let totalHarvestValue = 0
+
+    for (const inv of investments) {
+      if (inv.status !== 'confirmed' || !inv.listing) continue
+      const commodity = getCommodity(inv.listing.crop_type)
+      if (!commodity) {
+        totalMarketValue  += inv.amount_paid_usd
+        totalHarvestValue += inv.amount_paid_usd * (1 + inv.listing.expected_return_percent / 100)
+        continue
+      }
+      const val = valuatePosition(
+        inv.tokens_purchased,
+        inv.amount_paid_usd,
+        inv.listing,
+        commodity.currentPrice,
+      )
+      totalMarketValue  += val.marketValue
+      totalHarvestValue += val.harvestValue
+    }
+
+    const activeBookValue  = investments
+      .filter((i) => i.status === 'confirmed')
+      .reduce((s, i) => s + i.amount_paid_usd, 0)
+    const unrealizedPnl    = totalMarketValue - activeBookValue
+    const unrealizedPct    = activeBookValue > 0 ? (unrealizedPnl / activeBookValue) * 100 : 0
+    const portfolioValue   = totalInvested + totalReturns
+
+    return {
+      totalInvested,
+      totalReturns,
+      portfolioValue,
+      activeBookValue,
+      totalMarketValue,
+      totalHarvestValue,
+      unrealizedPnl,
+      unrealizedPct,
+    }
+  }, [investments, commodities])
 
   const filtered = useMemo(() => {
     if (tab === 'active')    return investments.filter((i) => i.status === 'confirmed' || i.status === 'pending')
@@ -445,6 +497,27 @@ export default function InvestorPortfolio() {
             </div>
           </div>
 
+          {/* Mark-to-market row — only shown when there are active positions */}
+          {stats.activeBookValue > 0 && (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <p className="text-xs text-white/50 font-medium">Active position valuation</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white/8 rounded-xl p-2.5">
+                  <p className="font-mono text-sm font-semibold text-white">{fmtUSD(stats.activeBookValue)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Book Value</p>
+                </div>
+                <div className="bg-white/8 rounded-xl p-2.5">
+                  <p className="font-mono text-sm font-semibold text-white">{fmtUSD(stats.totalMarketValue)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Market Value</p>
+                </div>
+                <div className="bg-white/8 rounded-xl p-2.5">
+                  <p className="font-mono text-sm font-semibold text-[#52C97C]">{fmtUSD(stats.totalHarvestValue)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">At Harvest</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Donut chart */}
           {investments.length > 0 && (
             <div className="pt-2 border-t border-white/10">
@@ -452,6 +525,35 @@ export default function InvestorPortfolio() {
               <DonutChart investments={investments} />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Unrealized P&L card */}
+      {!isLoading && stats.activeBookValue > 0 && (
+        <div className={`rounded-[12px] border p-4 flex items-center justify-between gap-4 ${
+          stats.unrealizedPnl >= 0
+            ? 'bg-[#52C97C]/8 border-[#52C97C]/25'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div>
+            <p className="text-xs text-[#5A7A62] font-medium">Unrealized Gain / Loss</p>
+            <p className={`font-mono text-xl font-semibold mt-0.5 ${
+              stats.unrealizedPnl >= 0 ? 'text-[#1A5C38]' : 'text-red-500'
+            }`}>
+              {stats.unrealizedPnl >= 0 ? '+' : ''}{fmtUSD(stats.unrealizedPnl)}
+            </p>
+            <p className="text-[11px] text-[#5A7A62] mt-0.5">Based on current commodity prices</p>
+          </div>
+          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold text-sm ${
+            stats.unrealizedPnl >= 0
+              ? 'bg-[#52C97C]/20 text-[#1A5C38]'
+              : 'bg-red-100 text-red-600'
+          }`}>
+            {stats.unrealizedPnl >= 0
+              ? <TrendingUp size={13} strokeWidth={2} />
+              : <ArrowUpRight size={13} strokeWidth={2} className="rotate-90" />}
+            {stats.unrealizedPnl >= 0 ? '+' : ''}{stats.unrealizedPct.toFixed(1)}%
+          </div>
         </div>
       )}
 

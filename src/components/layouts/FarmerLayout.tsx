@@ -17,6 +17,7 @@ import { getFarmsByFarmer } from '../../lib/supabase/farms'
 import NotificationBell from '../notifications/NotificationBell'
 import WeatherMini from '../weather/WeatherMini'
 import logo from '../../assets/agritoken-logo.svg'
+import WrongNetworkBanner from '../blockchain/WrongNetworkBanner'
 
 // ── Nav items ─────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ export default function FarmerLayout() {
   const { data: primaryFarm } = usePrimaryFarm(profile?.id)
 
   async function handleSignOut() {
-    await signOut().catch(() => {})
+    signOut()
     navigate('/login', { replace: true })
   }
 
@@ -133,6 +134,8 @@ export default function FarmerLayout() {
 
       {/* ── Main content area ─────────────────────────────── */}
       <div className="flex-1 flex flex-col lg:ml-64">
+
+        <WrongNetworkBanner />
 
         {/* Top header */}
         <header className="sticky top-0 z-30 bg-forest-dark border-b border-white/[0.06] h-14 flex items-center justify-between px-5">
