@@ -7,7 +7,9 @@ import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useReadContract,
 } from 'wagmi'
+import { bscTestnet } from 'wagmi/chains'
 import { parseEther } from 'viem'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import confetti from 'canvas-confetti'
@@ -50,6 +52,19 @@ const FACTORY_ABI = [
       { name: 'amount', type: 'uint256' },
     ],
     outputs: [],
+  },
+  {
+    name: 'getTokenInfo',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenAddress', type: 'address' }],
+    outputs: [
+      { name: 'cropType',      type: 'string'  },
+      { name: 'totalSupply',   type: 'uint256' },
+      { name: 'pricePerToken', type: 'uint256' },
+      { name: 'harvestDate',   type: 'uint256' },
+      { name: 'isClosed',      type: 'bool'    },
+    ],
   },
 ] as const
 
@@ -368,7 +383,7 @@ function CryptoTab({
   const queryClient = useQueryClient()
   const totalUsd = tokenAmount * listing.price_per_token_usd
 
-  // Fetch BNB price from CoinGecko
+  // Fetch BNB price from CoinGecko (display only)
   const { data: bnbPrice } = useQuery({
     queryKey: ['bnb-price'],
     queryFn: async () => {
@@ -381,18 +396,41 @@ function CryptoTab({
     staleTime: 60_000,
   })
 
+  // Read exact pricePerToken in wei from the contract — used for the tx value.
+  // Do NOT rely on CoinGecko conversion: if BNB price drifted since token creation
+  // the contract will reject msg.value < amount * pricePerToken, causing a revert
+  // that manifests as "gas limit too high" in MetaMask.
+  const tokenAddress = listing.token_contract_address as `0x${string}` | undefined
+  const { data: tokenInfo } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: 'getTokenInfo',
+    args: tokenAddress ? [tokenAddress] : undefined,
+    query: { enabled: !!tokenAddress && !!FACTORY_ADDRESS },
+  })
+
+  // On-chain price: amount * pricePerToken (exact wei). Falls back to CoinGecko
+  // estimate only when the contract read hasn't resolved yet.
+  const onChainPricePerToken = tokenInfo ? (tokenInfo[2] as bigint) : null
+  const exactValueWei = onChainPricePerToken !== null
+    ? onChainPricePerToken * BigInt(tokenAmount)
+    : null
   const bnbAmount = bnbPrice ? totalUsd / bnbPrice : null
 
   const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract()
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: txHash })
+    useWaitForTransactionReceipt({ hash: txHash, chainId: bscTestnet.id })
 
   const confirmedRef = useRef(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isConfirmed || !txHash || confirmedRef.current) return
     confirmedRef.current = true
+    setIsSaving(true)
+    setSaveError(null)
 
     async function finalize() {
       try {
@@ -431,9 +469,15 @@ function CryptoTab({
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
 
         void investment.id
+        setIsSaving(false)
         onSuccess()
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to record investment')
+        setIsSaving(false)
+        setSaveError(
+          err instanceof Error
+            ? err.message
+            : 'Transaction confirmed on-chain but failed to save. Contact support with your tx hash.'
+        )
       }
     }
 
@@ -441,8 +485,10 @@ function CryptoTab({
   }, [isConfirmed, txHash, investorId, listing, tokenAmount, totalUsd, farmerId, queryClient, onSuccess])
 
   function handleBuy() {
-    if (!bnbAmount || !listing.token_contract_address) return
-    const valueWei = parseEther(bnbAmount.toFixed(18) as `${number}`)
+    if (!listing.token_contract_address) return
+    // Prefer exact on-chain price; fall back to CoinGecko conversion if not yet loaded
+    const valueWei = exactValueWei ?? (bnbAmount ? parseEther(bnbAmount.toFixed(18) as `${number}`) : null)
+    if (!valueWei) return
     writeContract({
       address: FACTORY_ADDRESS,
       abi: FACTORY_ABI,
@@ -504,19 +550,48 @@ function CryptoTab({
         />
         <Row
           label="BNB to send"
-          value={bnbAmount ? `${bnbAmount.toFixed(6)} BNB` : '—'}
+          value={exactValueWei
+            ? `${(Number(exactValueWei) / 1e18).toFixed(6)} BNB`
+            : bnbAmount ? `${bnbAmount.toFixed(6)} BNB` : '—'}
           bold
         />
       </div>
 
-      {writeError && (
+      {writeError && !isSaving && !saveError && (
         <p className="text-xs text-red-500 flex items-center gap-1.5">
           <AlertTriangle size={12} />
-          {writeError.message.slice(0, 100)}
+          {writeError.message.slice(0, 120)}
         </p>
       )}
 
-      {txHash && !isConfirmed && (
+      {saveError && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-100">
+          <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-red-600">Tx confirmed, but save failed</p>
+            <p className="text-xs text-red-500 mt-0.5">{saveError}</p>
+            {txHash && (
+              <a
+                href={`https://testnet.bscscan.com/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#52C97C] underline mt-1 inline-block"
+              >
+                View on BSCScan
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isSaving && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F6F2E8]">
+          <Loader2 size={14} className="animate-spin text-[#52C97C]" />
+          <p className="text-xs text-[#5A7A62] font-medium">Saving your investment...</p>
+        </div>
+      )}
+
+      {txHash && !isConfirmed && !isSaving && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F6F2E8]">
           <Loader2 size={14} className="animate-spin text-[#52C97C]" />
           <p className="text-xs text-[#5A7A62]">
@@ -535,7 +610,7 @@ function CryptoTab({
 
       <button
         onClick={handleBuy}
-        disabled={isPending || isConfirming || !bnbAmount}
+        disabled={isPending || isConfirming || isSaving || !(exactValueWei ?? bnbAmount)}
         className="w-full h-12 rounded-pill bg-[#0D2B1E] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1A5C38] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isPending || isConfirming ? (

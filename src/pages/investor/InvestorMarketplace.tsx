@@ -368,6 +368,7 @@ export default function InvestorMarketplace() {
             <motion.div
               key={listing.id}
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="h-full"
             >
               <CropCard
                 listing={listing}

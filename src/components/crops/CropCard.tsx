@@ -12,6 +12,7 @@ import {
   Sprout,
   CheckCircle2,
   Leaf,
+  Coins,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -151,7 +152,7 @@ function FullCard({
       whileHover={{ y: -3, boxShadow: '0 8px 32px rgba(13,43,30,0.13)' }}
       transition={{ duration: 0.2 }}
       onClick={goToDetail}
-      className="bg-white rounded-card shadow-card overflow-hidden flex flex-col cursor-pointer select-none"
+      className="bg-white rounded-card shadow-card overflow-hidden flex flex-col cursor-pointer select-none h-full"
     >
       {/* ── Image area ───────────────────────────────────── */}
       <div className="relative aspect-[16/10] overflow-hidden bg-forest-mid/10 flex-shrink-0">
@@ -169,8 +170,16 @@ function FullCard({
         )}
 
         {/* Stars pill — top left */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm rounded-pill px-2.5 py-1.5 shadow-sm">
-          <StarRating rating={rating} />
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+          <div className="bg-white/95 backdrop-blur-sm rounded-pill px-2.5 py-1.5 shadow-sm">
+            <StarRating rating={rating} />
+          </div>
+          {listing.token_contract_address?.length === 42 && (
+            <div className="flex items-center gap-1 bg-[#F5C842]/95 backdrop-blur-sm rounded-pill px-2 py-1.5 shadow-sm">
+              <Coins size={9} strokeWidth={2.5} className="text-forest-dark" />
+              <span className="font-body text-[10px] font-bold text-forest-dark">BNB</span>
+            </div>
+          )}
         </div>
 
         {/* Heart button — top right */}
@@ -200,72 +209,78 @@ function FullCard({
       {/* ── Body ─────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 p-4 gap-3">
 
-        {/* Crop badge */}
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill bg-accent-green/10 text-forest-mid font-body text-[11px] font-semibold capitalize">
-            <Leaf size={9} strokeWidth={2.5} />
-            {listing.crop_type}
-          </span>
-        </div>
+        {/* Upper content group */}
+        <div className="flex flex-col gap-3 flex-1">
 
-        {/* Title */}
-        <p className="font-body text-sm font-semibold text-forest-dark leading-snug line-clamp-2">
-          {listing.description}
-        </p>
-
-        {/* Farmer + location */}
-        <div className="flex flex-col gap-1">
-          {farmerName && (
-            <div className="flex items-center gap-1.5">
-              <User size={11} className="text-text-muted flex-shrink-0" strokeWidth={2} />
-              <span className="font-body text-xs text-text-muted truncate">{farmerName}</span>
-            </div>
-          )}
-          {farmerLocation && (
-            <div className="flex items-center gap-1.5">
-              <MapPin size={11} className="text-text-muted flex-shrink-0" strokeWidth={2} />
-              <span className="font-body text-xs text-text-muted truncate">{farmerLocation}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Price range */}
-        <p className="font-mono text-sm font-semibold text-accent-green">
-          ${priceMin.toFixed(2)}{' '}
-          <span className="text-text-muted font-body font-normal text-xs">/ token</span>
-          <span className="text-text-muted font-body font-normal text-xs mx-1">·</span>
-          <span className="text-forest-dark">
-            est. ${priceMax.toFixed(2)}
-          </span>
-          <span className="text-text-muted font-body font-normal text-xs"> at harvest</span>
-        </p>
-
-        {/* Progress */}
-        <div className="space-y-1.5">
-          <FundingBar percent={fundingPercent} />
-          <div className="flex items-center justify-between">
-            <span className="font-body text-[11px] text-text-muted">
-              <span className="font-semibold text-forest-dark">{fundingPercent}%</span> funded
+          {/* Crop badge */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill bg-accent-green/10 text-forest-mid font-body text-[11px] font-semibold capitalize">
+              <Leaf size={9} strokeWidth={2.5} />
+              {listing.crop_type}
             </span>
-            <span className="flex items-center gap-1 font-body text-[11px] text-text-muted">
-              <Clock size={10} strokeWidth={2} />
-              {daysLeft > 0 ? `${daysLeft} days left` : 'Deadline passed'}
+          </div>
+
+          {/* Title */}
+          <p className="font-body text-sm font-semibold text-forest-dark leading-snug line-clamp-2">
+            {listing.description}
+          </p>
+
+          {/* Farmer + location */}
+          {(farmerName || farmerLocation) && (
+            <div className="flex flex-col gap-1">
+              {farmerName && (
+                <div className="flex items-center gap-1.5">
+                  <User size={11} className="text-text-muted flex-shrink-0" strokeWidth={2} />
+                  <span className="font-body text-xs text-text-muted truncate">{farmerName}</span>
+                </div>
+              )}
+              {farmerLocation && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={11} className="text-text-muted flex-shrink-0" strokeWidth={2} />
+                  <span className="font-body text-xs text-text-muted truncate">{farmerLocation}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Price range */}
+          <p className="font-mono text-sm font-semibold text-accent-green">
+            ${priceMin.toFixed(2)}{' '}
+            <span className="text-text-muted font-body font-normal text-xs">/ token</span>
+            <span className="text-text-muted font-body font-normal text-xs mx-1">·</span>
+            <span className="text-forest-dark">
+              est. ${priceMax.toFixed(2)}
+            </span>
+            <span className="text-text-muted font-body font-normal text-xs"> at harvest</span>
+          </p>
+
+          {/* Progress */}
+          <div className="space-y-1.5">
+            <FundingBar percent={fundingPercent} />
+            <div className="flex items-center justify-between">
+              <span className="font-body text-[11px] text-text-muted">
+                <span className="font-semibold text-forest-dark">{fundingPercent}%</span> funded
+              </span>
+              <span className="flex items-center gap-1 font-body text-[11px] text-text-muted">
+                <Clock size={10} strokeWidth={2} />
+                {daysLeft > 0 ? `${daysLeft} days left` : 'Deadline passed'}
+              </span>
+            </div>
+          </div>
+
+          {/* Return badge */}
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gold/15 text-forest-dark font-body text-[11px] font-semibold">
+              <TrendingUp size={10} strokeWidth={2.5} />
+              Est. {listing.expected_return_percent}% return
             </span>
           </div>
         </div>
 
-        {/* Return badge */}
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gold/15 text-forest-dark font-body text-[11px] font-semibold">
-            <TrendingUp size={10} strokeWidth={2.5} />
-            Est. {listing.expected_return_percent}% return
-          </span>
-        </div>
-
-        {/* CTA */}
+        {/* CTA — always at bottom, never clipped */}
         <button
           onClick={(e) => { e.stopPropagation(); goToDetail() }}
-          className="mt-auto w-full py-2.5 rounded-pill bg-accent-green text-forest-dark font-body text-sm font-semibold hover:bg-accent-green/85 active:scale-[0.98] transition-all duration-150"
+          className="w-full py-2.5 rounded-pill bg-accent-green text-forest-dark font-body text-sm font-semibold hover:bg-accent-green/85 active:scale-[0.98] transition-all duration-150 flex-shrink-0"
         >
           Invest Now
         </button>
