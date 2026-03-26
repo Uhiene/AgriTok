@@ -50,3 +50,12 @@ export async function updateFarm(
   if (error) throw error
   return data
 }
+
+export async function deleteFarm(farmId: string): Promise<void> {
+  const { error } = await supabase
+    .from('farms')
+    .delete()
+    .eq('id', farmId)
+
+  if (error) throw error
+}

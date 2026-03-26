@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate, useMatch } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useMatch, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -70,6 +70,7 @@ function BottomNavItem({ to, icon: Icon, label, exact }: typeof NAV[number]) {
 export default function AdminLayout() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   async function handleSignOut() {
     signOut()
@@ -134,7 +135,7 @@ export default function AdminLayout() {
 
         {/* Page content */}
         <main className="flex-1 pb-20 lg:pb-0">
-          <Outlet />
+          <Outlet key={location.pathname} />
         </main>
       </div>
 

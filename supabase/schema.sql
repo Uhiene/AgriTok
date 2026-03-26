@@ -365,6 +365,59 @@ end;
 $$;
 
 -- =============================================================
+-- Table: kyc_submissions
+-- =============================================================
+
+create table kyc_submissions (
+  id                  uuid        primary key default uuid_generate_v4(),
+  user_id             uuid        not null references profiles(id) on delete cascade,
+  -- Step 1: personal info
+  full_legal_name     text        not null default '',
+  date_of_birth       date,
+  nationality         text        not null default '',
+  phone               text        not null default '',
+  -- Step 2: ID document
+  doc_type            text        not null default 'national_id', -- national_id | passport | drivers_license
+  doc_front_url       text,
+  doc_back_url        text,
+  selfie_url          text,
+  -- Step 3: farm verification
+  farm_cert_url       text,
+  land_titled         boolean     not null default false,
+  gps_lat             decimal,
+  gps_lng             decimal,
+  -- Status & review
+  rejection_reason    text,
+  submitted_at        timestamptz not null default now(),
+  reviewed_at         timestamptz,
+  reviewed_by         uuid        references profiles(id)
+);
+
+alter table kyc_submissions enable row level security;
+
+-- Farmer: full access to own submission
+create policy "kyc: own select"
+  on kyc_submissions for select
+  using (auth.uid() = user_id);
+
+create policy "kyc: own insert"
+  on kyc_submissions for insert
+  with check (auth.uid() = user_id);
+
+create policy "kyc: own update"
+  on kyc_submissions for update
+  using (auth.uid() = user_id);
+
+-- Admin: full read + update
+create policy "kyc: admin all"
+  on kyc_submissions for all
+  using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+create index on kyc_submissions (user_id);
+
+-- =============================================================
 -- Realtime: enable for funding progress bar
 -- =============================================================
 alter publication supabase_realtime add table crop_listings;

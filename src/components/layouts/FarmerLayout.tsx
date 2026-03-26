@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate, useMatch } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useMatch, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Home,
@@ -8,6 +8,8 @@ import {
   User,
   LogOut,
   BookOpen,
+  ShieldCheck,
+  Banknote,
 } from 'lucide-react'
 
 import { useAuth } from '../../hooks/useAuth'
@@ -26,8 +28,10 @@ const NAV = [
   { to: '/farmer/farms',     icon: Sprout,    label: 'Farms',     exact: false },
   { to: '/farmer/listings',  icon: BarChart2, label: 'Listings',  exact: false },
   { to: '/farmer/notes',     icon: BookOpen,  label: 'Notes',     exact: false },
-  { to: '/farmer/wallet',    icon: Wallet,    label: 'Wallet',    exact: false },
-  { to: '/farmer/profile',   icon: User,      label: 'Profile',   exact: false },
+  { to: '/farmer/earnings',  icon: Banknote,     label: 'Earnings',  exact: false },
+  { to: '/farmer/wallet',   icon: Wallet,       label: 'Wallet',    exact: false },
+  { to: '/farmer/kyc',      icon: ShieldCheck,  label: 'KYC',       exact: false },
+  { to: '/farmer/profile',  icon: User,         label: 'Profile',   exact: false },
 ]
 
 function SideNavItem({ to, icon: Icon, label, exact }: typeof NAV[number]) {
@@ -78,6 +82,7 @@ function usePrimaryFarm(userId?: string) {
 export default function FarmerLayout() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { unreadCount } = useNotifications(profile?.id)
   const { data: primaryFarm } = usePrimaryFarm(profile?.id)
 
@@ -162,7 +167,7 @@ export default function FarmerLayout() {
 
         {/* Page content */}
         <main className="flex-1 pb-20 lg:pb-0">
-          <Outlet />
+          <Outlet key={location.pathname} />
         </main>
       </div>
 

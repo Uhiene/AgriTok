@@ -1,17 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, differenceInDays, isPast } from 'date-fns'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Sprout, TrendingUp, Clock, Users, AlertTriangle,
   CheckCircle2, Coins, FileText, ExternalLink, Edit2,
-  Wifi, WifiOff,
+  Wifi, WifiOff, Trash2, Loader2,
 } from 'lucide-react'
 
 import { supabase } from '../../lib/supabase/client'
-import { getListing } from '../../lib/supabase/listings'
+import { getListing, cancelListing } from '../../lib/supabase/listings'
 import { getInvestmentsByListing } from '../../lib/supabase/investments'
 import { getFarm } from '../../lib/supabase/farms'
 import WeatherWidget from '../../components/weather/WeatherWidget'
@@ -92,6 +92,20 @@ function useRealtimeInvestments(listingId: string | undefined) {
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [confirmCancel, setConfirmCancel] = useState(false)
+
+  const { mutate: doCancel, isPending: cancelling } = useMutation({
+    mutationFn: () => cancelListing(id!),
+    onSuccess: () => {
+      toast.success('Listing cancelled')
+      void queryClient.invalidateQueries({ queryKey: ['listing', id] })
+      void queryClient.invalidateQueries({ queryKey: ['listings-farmer'] })
+      setConfirmCancel(false)
+    },
+    onError: () => toast.error('Failed to cancel listing'),
+  })
+
   const { data: listing, isLoading, isError, refetch } = useQuery({
     queryKey: ['listing', id],
     queryFn:  () => getListing(id!),
@@ -448,6 +462,47 @@ export default function ListingDetail() {
               <Edit2 size={14} strokeWidth={2} />
               Edit Listing
             </Link>
+          </div>
+        )}
+
+        {/* Cancel listing — only if open */}
+        {listing.status === 'open' && (
+          <div className="bg-white rounded-card shadow-card p-5 space-y-3">
+            {!confirmCancel ? (
+              <button
+                onClick={() => setConfirmCancel(true)}
+                className="flex items-center gap-2 font-body text-sm text-red-500 hover:text-red-600 transition-colors"
+              >
+                <Trash2 size={14} strokeWidth={2} />
+                Cancel this listing
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p className="font-body text-sm font-semibold text-red-700">Cancel this listing?</p>
+                <p className="font-body text-xs text-red-600">
+                  {hasInvestors
+                    ? 'This listing has active investors. Cancelling will set it to cancelled status — investors will no longer be able to purchase tokens.'
+                    : 'This will remove the listing from the marketplace immediately.'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => doCancel()}
+                    disabled={cancelling}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-pill bg-red-500 text-white font-body text-xs font-semibold hover:bg-red-600 disabled:opacity-60 transition-colors"
+                  >
+                    {cancelling ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} strokeWidth={2.5} />}
+                    {cancelling ? 'Cancelling...' : 'Yes, cancel listing'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    disabled={cancelling}
+                    className="px-4 py-2 rounded-pill border border-[rgba(13,43,30,0.12)] text-text-muted font-body text-xs hover:text-forest-dark transition-colors"
+                  >
+                    Keep listing
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

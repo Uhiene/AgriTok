@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 import { useAuth } from '../../hooks/useAuth'
-import { getFarm } from '../../lib/supabase/farms'
+import { getFarm, deleteFarm } from '../../lib/supabase/farms'
 import { getListingsByFarm } from '../../lib/supabase/listings'
 import { getNotesByFarm, createNote, deleteNote } from '../../lib/supabase/notes'
 import WeatherWidget from '../../components/weather/WeatherWidget'
@@ -164,7 +164,9 @@ export default function FarmDetail() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const queryClient = useQueryClient()
-  const [showNoteForm, setShowNoteForm] = useState(false)
+  const [showNoteForm, setShowNoteForm]       = useState(false)
+  const [confirmDelete, setConfirmDelete]     = useState(false)
+  const [deletingFarm,  setDeletingFarm]      = useState(false)
 
   const { data: farm, isLoading: farmLoading } = useQuery({
     queryKey: ['farm', id],
@@ -219,6 +221,22 @@ export default function FarmDetail() {
     onError: () => toast.error('Failed to delete note'),
   })
 
+  async function handleDeleteFarm() {
+    if (!id) return
+    setDeletingFarm(true)
+    try {
+      await deleteFarm(id)
+      toast.success('Farm deleted')
+      void queryClient.invalidateQueries({ queryKey: ['farms'] })
+      navigate('/farmer/farms')
+    } catch {
+      toast.error('Failed to delete farm')
+    } finally {
+      setDeletingFarm(false)
+      setConfirmDelete(false)
+    }
+  }
+
   if (farmLoading) {
     return (
       <div className="px-4 py-6 max-w-2xl mx-auto space-y-4">
@@ -261,7 +279,47 @@ export default function FarmDetail() {
             <p className="font-body text-xs text-text-muted truncate">{farm.location_name}</p>
           </div>
         </div>
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="p-2 rounded-card text-text-muted hover:text-red-500 hover:bg-red-50 transition-all"
+          aria-label="Delete farm"
+        >
+          <Trash2 size={18} strokeWidth={2} />
+        </button>
       </div>
+
+      {/* Delete confirm */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="bg-red-50 border border-red-100 rounded-card p-4 space-y-3"
+          >
+            <p className="font-body text-sm font-semibold text-red-700">Delete this farm?</p>
+            <p className="font-body text-xs text-red-600">
+              This will permanently remove <strong>{farm.name}</strong> and all its notes.
+              Active listings linked to this farm will remain until you cancel them separately.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteFarm}
+                disabled={deletingFarm}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-pill bg-red-500 text-white font-body text-xs font-semibold hover:bg-red-600 disabled:opacity-60 transition-colors"
+              >
+                {deletingFarm ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} strokeWidth={2.5} />}
+                {deletingFarm ? 'Deleting...' : 'Yes, delete farm'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deletingFarm}
+                className="px-4 py-2 rounded-pill border border-[rgba(13,43,30,0.12)] text-text-muted font-body text-xs hover:text-forest-dark transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Info chips */}
       <div className="flex flex-wrap gap-2">

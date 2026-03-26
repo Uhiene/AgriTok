@@ -74,6 +74,15 @@ export async function createListing(
   return data
 }
 
+export async function cancelListing(listingId: string): Promise<void> {
+  const { error } = await supabase
+    .from('crop_listings')
+    .update({ status: 'cancelled' })
+    .eq('id', listingId)
+
+  if (error) throw error
+}
+
 export async function updateListingFunding(
   listingId: string,
   tokensAdded: number,

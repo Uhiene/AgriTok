@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useRef, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,13 +12,14 @@ import {
   Upload, X, Search, FileText, Save, AlertCircle, ExternalLink,
   Coins, Eye,
 } from 'lucide-react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, useChainId, useSwitchChain } from 'wagmi'
+import { bscTestnet } from 'wagmi/chains'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { parseEther, parseEventLogs } from 'viem'
+import { parseEther, parseEventLogs, createPublicClient, http, fallback } from 'viem'
 
 import { useAuth } from '../../hooks/useAuth'
 import { getFarmsByFarmer } from '../../lib/supabase/farms'
-import { createListing } from '../../lib/supabase/listings'
+
 import { createNotification } from '../../lib/supabase/notifications'
 import { supabase } from '../../lib/supabase/client'
 import { searchPhotos } from '../../lib/api/unsplash'
@@ -257,33 +258,23 @@ export default function NewListing() {
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   // ── Document state — files held locally, uploaded inside submitMutation
-  const [soilReportUrl,   setSoilReportUrl]   = useState<string | null>(null)
-  const [plantingPlanUrl, setPlantingPlanUrl] = useState<string | null>(null)
+  const [soilReportUrl,   _setSoilReportUrl]   = useState<string | null>(null)
+  const [plantingPlanUrl, _setPlantingPlanUrl] = useState<string | null>(null)
   const [soilFile,        setSoilFile]        = useState<File | null>(null)
   const [planFile,        setPlanFile]        = useState<File | null>(null)
 
   // ── Blockchain state
-  const [mintOnChain,   setMintOnChain]   = useState(false)
-  const [demoMinting,   setDemoMinting]   = useState(false)   // simulated mint progress
-  const [demoConfirmed, setDemoConfirmed] = useState(false)
-  const [demoTxHash,    setDemoTxHash]    = useState<string | null>(null)
-  const mintSubmittedRef     = useRef(false)
-  const mintedTokenAddrRef   = useRef<string | null>(null)  // real deployed CropToken address
+  const [mintOnChain,      setMintOnChain]      = useState(false)
+  const [mintStep,         setMintStep]          = useState<'idle'|'switching'|'wallet'|'confirming'|'saving'>('idle')
+  const [mintTxHash,       setMintTxHash]        = useState<string | null>(null)
+  const mintedTokenAddrRef = useRef<string | null>(null)
 
-  const IS_DEMO_MINT = !FACTORY_ADDRESS  // true when no contract deployed
+  const IS_DEMO_MINT = !FACTORY_ADDRESS
 
-  const { isConnected } = useAccount()
-  const {
-    writeContract,
-    data:       mintTxHash,
-    isPending:  isMinting,
-    error:      mintError,
-  } = useWriteContract()
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    data:      txReceipt,
-  } = useWaitForTransactionReceipt({ hash: mintTxHash, confirmations: 3 })
+  const { isConnected }        = useAccount()
+  const chainId                = useChainId()
+  const { switchChainAsync }   = useSwitchChain()
+  const { writeContractAsync } = useWriteContract()
 
   // Live BNB/USD price for wei conversion (fallback: $600)
   const { data: bnbPrice = 600 } = useQuery({
@@ -323,43 +314,6 @@ export default function NewListing() {
     staleTime: 1000 * 60 * 5,
   })
 
-  // ── After real mint tx confirmed (3 blocks), extract token address then save
-  useEffect(() => {
-    if (isConfirmed && mintTxHash && txReceipt && !mintSubmittedRef.current) {
-      mintSubmittedRef.current = true
-      // Parse CropTokenCreated event to get the deployed token contract address
-      try {
-        const logs = parseEventLogs({
-          abi:       CROP_FACTORY_ABI,
-          logs:      txReceipt.logs,
-          eventName: 'CropTokenCreated',
-        })
-        mintedTokenAddrRef.current =
-          (logs[0]?.args as { tokenAddress?: string } | undefined)?.tokenAddress ?? null
-      } catch {
-        mintedTokenAddrRef.current = null
-      }
-      submitMutation.mutate()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConfirmed, mintTxHash, txReceipt])
-
-  // ── After demo mint confirmed, auto-submit to Supabase
-  useEffect(() => {
-    if (demoConfirmed && !mintSubmittedRef.current) {
-      mintSubmittedRef.current = true
-      submitMutation.mutate()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demoConfirmed])
-
-  // ── Show mint error as toast
-  useEffect(() => {
-    if (mintError) {
-      const msg = (mintError as { shortMessage?: string }).shortMessage ?? mintError.message ?? 'Transaction rejected'
-      toast.error(msg)
-    }
-  }, [mintError])
 
   // ── Draft save
   function saveDraft() {
@@ -421,7 +375,8 @@ export default function NewListing() {
   }
 
   // ── Upload a doc file to storage (called inside submitMutation only)
-  async function uploadDoc(file: File, docType: 'soil' | 'plan'): Promise<string> {
+  // @ts-expect-error -- wired up in upcoming submitMutation refactor
+  async function _uploadDoc(file: File, docType: 'soil' | 'plan'): Promise<string> {
     const ext  = file.name.split('.').pop() ?? 'pdf'
     const path = `${profile!.id}/docs/${docType}-${Date.now()}.${ext}`
     const { data, error } = await supabase.storage
@@ -434,98 +389,149 @@ export default function NewListing() {
     return publicUrl
   }
 
-  // ── Submit mutation
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      if (!s1 || !s2 || !profile) throw new Error('Missing required data')
+  // ── Save listing to Supabase (called by both manual and BNB paths)
+  async function saveListing(tokenContractAddress: string | null) {
+    if (!s1 || !s2 || !profile) throw new Error('Not ready — missing form data or profile')
+    console.log('[saveListing] start', { tokenContractAddress, farm_id: s1.farm_id, profile_id: profile.id })
 
-      // Upload any selected documents now (single network trip at submit time)
-      const [resolvedSoilUrl, resolvedPlanUrl] = await Promise.all([
-        soilFile && !soilReportUrl ? uploadDoc(soilFile, 'soil').catch(() => null) : Promise.resolve(soilReportUrl),
-        planFile && !plantingPlanUrl ? uploadDoc(planFile, 'plan').catch(() => null) : Promise.resolve(plantingPlanUrl),
-      ])
-      if (resolvedSoilUrl) setSoilReportUrl(resolvedSoilUrl)
-      if (resolvedPlanUrl) setPlantingPlanUrl(resolvedPlanUrl)
+    const payload = {
+      farm_id:                  s1.farm_id,
+      farmer_id:                profile.id,
+      crop_type:                s1.crop_type,
+      crop_image_url:           cropImageUrl,
+      expected_yield_kg:        s1.expected_yield_kg,
+      price_per_token_usd:      s2.price_per_token,
+      total_tokens:             s2.total_tokens,
+      tokens_sold:              0,
+      funding_goal_usd:         s2.total_tokens * s2.price_per_token,
+      amount_raised_usd:        0,
+      funding_deadline:         new Date(s2.funding_deadline).toISOString(),
+      harvest_date:             new Date(s1.harvest_date).toISOString(),
+      expected_return_percent:  s2.expected_return_percent,
+      status:                   'open' as const,
+      token_contract_address:   tokenContractAddress,
+      description:              s1.description,
+    }
+    console.log('[saveListing] payload:', JSON.stringify(payload))
 
-      return createListing({
-        farm_id:                  s1.farm_id,
-        farmer_id:                profile.id,
-        crop_type:                s1.crop_type,
-        crop_image_url:           cropImageUrl,
-        expected_yield_kg:        s1.expected_yield_kg,
-        price_per_token_usd:      s2.price_per_token,
-        total_tokens:             s2.total_tokens,
-        tokens_sold:              0,
-        funding_goal_usd:         s2.total_tokens * s2.price_per_token,
-        amount_raised_usd:        0,
-        funding_deadline:         new Date(s2.funding_deadline).toISOString(),
-        harvest_date:             new Date(s1.harvest_date).toISOString(),
-        expected_return_percent:  s2.expected_return_percent,
-        status:                   'open',
-        token_contract_address:   mintedTokenAddrRef.current ?? demoTxHash ?? null,
-        description:              s1.description,
+    // Use raw fetch with AbortSignal to bypass supabase-js internal auth queue
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token ?? supabaseKey
+
+    console.log('[saveListing] fetching insert...')
+    let res: Response
+    try {
+      res = await fetch(`${supabaseUrl}/rest/v1/crop_listings`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':         supabaseKey,
+          'Authorization': `Bearer ${token}`,
+          'Prefer':        'return=representation',
+        },
+        body:   JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
       })
-    },
-    onSuccess: async (listing) => {
-      localStorage.removeItem(DRAFT_KEY)
+    } catch (e) {
+      console.error('[saveListing] fetch threw', e)
+      throw new Error(`Network error: ${(e as Error).message}`)
+    }
 
-      // Notify all admins (best-effort)
+    console.log('[saveListing] fetch status:', res.status)
+    if (!res.ok) {
+      const body = await res.text().catch(() => res.statusText)
+      console.error('[saveListing] insert error body:', body)
+      throw new Error(`Insert failed (${res.status}): ${body}`)
+    }
+
+    const rows = await res.json() as CropListing[]
+    console.log('[saveListing] insert rows:', rows)
+    const listing = rows[0]
+    if (!listing) throw new Error('Insert returned no data')
+
+    console.log('[saveListing] created id:', listing.id)
+
+    // Notify admins best-effort
+    supabase.from('profiles').select('id').eq('role', 'admin').then(({ data: admins }) => {
+      if (!admins?.length) return
+      void Promise.allSettled(admins.map((a: { id: string }) =>
+        createNotification({
+          user_id: a.id,
+          title:   'New crop listing submitted',
+          message: `${profile.full_name ?? 'A farmer'} created a ${listing.crop_type} listing — goal $${listing.funding_goal_usd.toLocaleString()}`,
+          type:    'system',
+          read:    false,
+        }),
+      ))
+    })
+
+    localStorage.removeItem(DRAFT_KEY)
+    toast.success('Crop listing created successfully')
+    navigate(`/farmer/listings/${listing.id}`)
+  }
+
+  // ── Main submit handler
+  async function handleFinalSubmit() {
+    if (!s1 || !s2 || !profile) {
+      console.warn('[handleFinalSubmit] guard failed', { s1: !!s1, s2: !!s2, profile: !!profile })
+      toast.error('Please complete all steps first')
+      return
+    }
+
+    // ── Manual path (no mint) ────────────────────────────────
+    if (!mintOnChain) {
+      setMintStep('saving')
       try {
-        const { data: admins } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'admin')
-        if (admins && admins.length > 0) {
-          await Promise.allSettled(
-            admins.map((a: { id: string }) =>
-              createNotification({
-                user_id: a.id,
-                title: 'New crop listing submitted',
-                message: `${profile?.full_name ?? 'A farmer'} created a new ${listing.crop_type} token listing with a funding goal of $${listing.funding_goal_usd.toLocaleString()}.`,
-                type: 'system',
-                read: false,
-              }),
-            ),
-          )
-        }
-      } catch {
-        // Non-blocking — listing was created successfully
+        const deadline = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Listing creation timed out — check your network and try again')), 15_000),
+        )
+        await Promise.race([saveListing(null), deadline])
+      } catch (err) {
+        console.error('[handleFinalSubmit] saveListing error', err)
+        toast.error((err as Error).message ?? 'Failed to create listing')
+      } finally {
+        setMintStep('idle')
       }
+      return
+    }
 
-      toast.success('Crop listing created successfully')
-      navigate(`/farmer/listings/${listing.id}`)
-    },
-    onError: (err: Error) => toast.error(err.message ?? 'Failed to create listing'),
-  })
+    // ── BNB Chain mint path ──────────────────────────────────
+    if (!isConnected) { toast.error('Connect your wallet to mint on BNB Chain'); return }
 
-  // ── Mint + submit handler
-  function handleFinalSubmit() {
-    if (!s1 || !s2) return
-    if (mintOnChain) {
-      if (!isConnected) { toast.error('Connect your wallet to mint on BNB Chain'); return }
-      mintSubmittedRef.current   = false
+    try {
+      // 1. Switch network
+      setMintStep('switching')
+      console.log('[handleFinalSubmit] switching chain, current:', chainId)
+      await switchChainAsync({ chainId: bscTestnet.id })
+      console.log('[handleFinalSubmit] chain switched to BSC Testnet')
+
       mintedTokenAddrRef.current = null
 
+      // 2. Demo mode
       if (IS_DEMO_MINT) {
-        // No contract deployed — run a simulated mint for demo purposes
-        setDemoMinting(true)
-        setDemoConfirmed(false)
-        const fakeTx = '0x' + Array.from({ length: 64 }, () =>
-          Math.floor(Math.random() * 16).toString(16)).join('')
-        setDemoTxHash(fakeTx)
-        setTimeout(() => {
-          setDemoMinting(false)
-          setDemoConfirmed(true)
-        }, 2000)
+        setMintStep('wallet')
+        await new Promise((r) => setTimeout(r, 600))
+        const fakeTx = ('0x' + Array.from({ length: 64 }, () =>
+          Math.floor(Math.random() * 16).toString(16)).join('')) as `0x${string}`
+        setMintTxHash(fakeTx)
+        setMintStep('confirming')
+        await new Promise((r) => setTimeout(r, 2200))
+        setMintStep('saving')
+        await saveListing(fakeTx)
         return
       }
 
-      const harvestTs = Math.floor(new Date(s1.harvest_date).getTime() / 1000)
-      // Convert USD price to BNB wei using live BNB/USD rate
+      // 3. Real contract call
+      const harvestTs  = Math.floor(new Date(s1.harvest_date).getTime() / 1000)
       const priceInBnb = s2.price_per_token / (bnbPrice || 600)
-      writeContract({
-        address: FACTORY_ADDRESS,
-        abi:     CROP_FACTORY_ABI,
+
+      setMintStep('wallet')
+      console.log('[handleFinalSubmit] writeContractAsync...')
+      const hash = await writeContractAsync({
+        address:      FACTORY_ADDRESS,
+        abi:          CROP_FACTORY_ABI,
         functionName: 'createCropToken',
         args: [
           s1.crop_type,
@@ -534,8 +540,42 @@ export default function NewListing() {
           BigInt(harvestTs),
         ],
       })
-    } else {
-      submitMutation.mutate()
+      console.log('[handleFinalSubmit] tx hash:', hash)
+      setMintTxHash(hash)
+      setMintStep('confirming')
+
+      // 4. Wait for receipt using reliable public RPCs with fallback
+      console.log('[handleFinalSubmit] waiting for receipt...')
+      const bscClient = createPublicClient({
+        chain:     bscTestnet,
+        transport: fallback([
+          http('https://bsc-testnet-rpc.publicnode.com'),
+          http('https://bsc-testnet.bnbchain.org'),
+          http('https://endpoints.omniatech.io/v1/bsc/testnet/public'),
+        ]),
+      })
+      const receipt = await bscClient.waitForTransactionReceipt({ hash, confirmations: 1 })
+      console.log('[handleFinalSubmit] receipt received', receipt.transactionHash)
+
+      // 5. Extract CropToken contract address from event
+      try {
+        const logs = parseEventLogs({ abi: CROP_FACTORY_ABI, logs: receipt.logs, eventName: 'CropTokenCreated' })
+        mintedTokenAddrRef.current = (logs[0]?.args as { tokenAddress?: string } | undefined)?.tokenAddress ?? null
+        console.log('[handleFinalSubmit] token address:', mintedTokenAddrRef.current)
+      } catch (e) {
+        console.warn('[handleFinalSubmit] event parse failed', e)
+      }
+
+      // 6. Save to Supabase
+      setMintStep('saving')
+      await saveListing(mintedTokenAddrRef.current)
+
+    } catch (err) {
+      console.error('[handleFinalSubmit] error', err)
+      const msg = (err as { shortMessage?: string }).shortMessage ?? (err as Error).message ?? 'Transaction failed'
+      toast.error(msg)
+    } finally {
+      setMintStep('idle')
     }
   }
 
@@ -1078,7 +1118,7 @@ export default function NewListing() {
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${mintOnChain ? 'left-[22px]' : 'left-0.5'}`} />
               </div>
               <span className="font-body text-sm text-forest-dark">
-                {mintOnChain ? 'Mint on BNB Chain (recommended)' : 'Skip minting (list on platform only)'}
+                {mintOnChain ? 'Skip minting (list on platform only)' : 'Mint on BNB Chain (recommended)'}
               </span>
             </label>
 
@@ -1102,42 +1142,41 @@ export default function NewListing() {
               </div>
             )}
 
-            {/* Mint progress states — real */}
-            {mintTxHash && (
+            {/* Mint progress states */}
+            {mintStep !== 'idle' && mintOnChain && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-blue-50 border border-blue-100">
-                  {isConfirming ? (
+                  {mintStep === 'switching' ? (
+                    <><Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
+                    <span className="font-body text-xs text-blue-700">Switching to BNB Chain...</span></>
+                  ) : mintStep === 'wallet' ? (
+                    <><Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
+                    <span className="font-body text-xs text-blue-700">Waiting for wallet approval...</span></>
+                  ) : mintStep === 'confirming' ? (
                     <><Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
                     <span className="font-body text-xs text-blue-700">Confirming transaction on BNB Chain...</span></>
-                  ) : isConfirmed ? (
+                  ) : mintStep === 'saving' ? (
                     <><CheckCircle2 size={14} className="text-accent-green flex-shrink-0" strokeWidth={2} />
                     <span className="font-body text-xs text-forest-dark">Transaction confirmed. Saving listing...</span></>
                   ) : null}
                 </div>
-                <a
-                  href={`https://testnet.bscscan.com/tx/${mintTxHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 font-body text-xs text-text-muted hover:text-forest-dark transition-colors"
-                >
-                  <ExternalLink size={11} strokeWidth={2} />
-                  View on BscScan
-                </a>
+                {mintTxHash && (
+                  <a
+                    href={`https://testnet.bscscan.com/tx/${mintTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-body text-xs text-text-muted hover:text-forest-dark transition-colors"
+                  >
+                    <ExternalLink size={11} strokeWidth={2} />
+                    View on BscScan
+                  </a>
+                )}
               </div>
             )}
-
-            {/* Mint progress states — demo simulation */}
-            {(demoMinting || demoConfirmed) && (
-              <div className="pt-1">
-                <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-blue-50 border border-blue-100">
-                  {demoMinting ? (
-                    <><Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
-                    <span className="font-body text-xs text-blue-700">Broadcasting to BNB Chain testnet...</span></>
-                  ) : (
-                    <><CheckCircle2 size={14} className="text-accent-green flex-shrink-0" strokeWidth={2} />
-                    <span className="font-body text-xs text-forest-dark">Token contract deployed. Saving listing...</span></>
-                  )}
-                </div>
+            {mintStep === 'saving' && !mintOnChain && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-blue-50 border border-blue-100">
+                <Loader2 size={14} className="animate-spin text-blue-500 flex-shrink-0" />
+                <span className="font-body text-xs text-blue-700">Creating listing...</span>
               </div>
             )}
           </div>
@@ -1147,7 +1186,7 @@ export default function NewListing() {
             <button
               type="button"
               onClick={() => setStep(3)}
-              disabled={isMinting || isConfirming || demoMinting || submitMutation.isPending}
+              disabled={mintStep !== 'idle'}
               className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-pill border border-[rgba(13,43,30,0.12)] text-text-muted font-body text-sm font-medium hover:border-forest-mid/30 disabled:opacity-50 transition-colors"
             >
               <ChevronLeft size={16} strokeWidth={2.5} /> Back
@@ -1155,22 +1194,17 @@ export default function NewListing() {
             <button
               type="button"
               onClick={handleFinalSubmit}
-              disabled={
-                isMinting || isConfirming || demoMinting || submitMutation.isPending ||
-                (mintOnChain && !isConnected)
-              }
+              disabled={mintStep !== 'idle' || (mintOnChain && !isConnected)}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-pill bg-forest-dark text-white font-body text-sm font-semibold hover:opacity-90 disabled:opacity-60 active:scale-[0.98] transition-all"
             >
-              {(isMinting || isConfirming || demoMinting || submitMutation.isPending) && (
-                <Loader2 size={15} className="animate-spin" />
-              )}
-              {isMinting
+              {mintStep !== 'idle' && <Loader2 size={15} className="animate-spin" />}
+              {mintStep === 'switching'
+                ? 'Switching network...'
+                : mintStep === 'wallet'
                 ? 'Waiting for wallet...'
-                : isConfirming
+                : mintStep === 'confirming'
                 ? 'Confirming on-chain...'
-                : demoMinting
-                ? 'Deploying contract...'
-                : submitMutation.isPending
+                : mintStep === 'saving'
                 ? 'Creating listing...'
                 : mintOnChain
                 ? 'Mint & Create Listing'

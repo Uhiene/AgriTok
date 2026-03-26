@@ -26,7 +26,9 @@ const NewListing      = lazy(() => import('./pages/farmer/NewListing'))
 const ListingDetail   = lazy(() => import('./pages/farmer/ListingDetail'))
 const HarvestReport   = lazy(() => import('./pages/farmer/HarvestReport'))
 const FarmerNotes     = lazy(() => import('./pages/farmer/FarmerNotes'))
-const FarmerProfile   = lazy(() => import('./pages/farmer/FarmerProfile'))
+const FarmerProfile      = lazy(() => import('./pages/farmer/FarmerProfile'))
+const KYCVerification    = lazy(() => import('./pages/farmer/KYCVerification'))
+const Earnings           = lazy(() => import('./pages/farmer/Earnings'))
 
 // Investor
 const InvestorDashboard   = lazy(() => import('./pages/investor/InvestorDashboard'))
@@ -100,6 +102,8 @@ export const router = createBrowserRouter([
             { path: '/farmer/wallet',        element: <S><SharedWallet /></S> },
             { path: '/farmer/notes',         element: <S><FarmerNotes /></S> },
             { path: '/farmer/profile',       element: <S><FarmerProfile /></S> },
+            { path: '/farmer/kyc',           element: <S><KYCVerification /></S> },
+            { path: '/farmer/earnings',      element: <S><Earnings /></S> },
           ],
         }],
       },

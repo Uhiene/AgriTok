@@ -133,6 +133,33 @@ export interface FarmNote {
 }
 
 // ============================================================
+// Table: kyc_submissions
+// ============================================================
+
+export type DocType = 'national_id' | 'passport' | 'drivers_license'
+
+export interface KycSubmission {
+  id:               string
+  user_id:          string
+  full_legal_name:  string
+  date_of_birth:    string | null
+  nationality:      string
+  phone:            string
+  doc_type:         DocType
+  doc_front_url:    string | null
+  doc_back_url:     string | null
+  selfie_url:       string | null
+  farm_cert_url:    string | null
+  land_titled:      boolean
+  gps_lat:          number | null
+  gps_lng:          number | null
+  rejection_reason: string | null
+  submitted_at:     string
+  reviewed_at:      string | null
+  reviewed_by:      string | null
+}
+
+// ============================================================
 // Table: notifications
 // ============================================================
 

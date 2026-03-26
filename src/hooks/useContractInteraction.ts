@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { bscTestnet } from 'wagmi/chains'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseEventLogs } from 'viem'
 import { parseEther } from 'viem'
@@ -88,10 +89,11 @@ export function useCreateAndSaveListing() {
 
   const { writeContractAsync } = useWriteContract()
 
-  // Watch for 3 confirmations after tx is submitted
+  // Watch for 1 confirmation on BSC Testnet
   const { data: receipt, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash:          txHash,
-    confirmations: 3,
+    confirmations: 1,
+    chainId:       bscTestnet.id,
   })
 
   // When 3 confirmations arrive, extract token address and save to Supabase
@@ -279,7 +281,8 @@ export function usePurchaseTokens() {
 
   const { isSuccess: isConfirmed, data: receipt } = useWaitForTransactionReceipt({
     hash:          txHash,
-    confirmations: 3,
+    confirmations: 1,
+    chainId:       bscTestnet.id,
   })
 
   useEffect(() => {

@@ -33,5 +33,5 @@ export default function ProtectedRoute() {
     return <Navigate to={dest} replace />
   }
 
-  return <Outlet />
+  return <Outlet key={location.pathname} />
 }

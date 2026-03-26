@@ -8,7 +8,7 @@ import {
 import { WagmiProvider } from 'wagmi'
 import { bscTestnet } from 'wagmi/chains'
 import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { http } from 'wagmi'
+import { http, fallback } from 'wagmi'
 import { useEffect, useRef } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { Toaster, toast } from 'sonner'
@@ -23,7 +23,11 @@ const wagmiConfig = getDefaultConfig({
   projectId: (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string) || 'placeholder',
   chains: [bscTestnet],
   transports: {
-    [bscTestnet.id]: http(import.meta.env.VITE_BSC_TESTNET_RPC as string),
+    [bscTestnet.id]: fallback([
+      http('https://bsc-testnet-rpc.publicnode.com'),
+      http('https://bsc-testnet.bnbchain.org'),
+      http('https://endpoints.omniatech.io/v1/bsc/testnet/public'),
+    ]),
   },
 })
 

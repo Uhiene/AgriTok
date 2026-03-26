@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate, useMatch } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useMatch, useLocation } from 'react-router-dom'
 import {
   Home,
   Store,
@@ -67,6 +67,7 @@ function BottomNavItem({ to, icon: Icon, label, exact }: typeof NAV[number]) {
 export default function InvestorLayout() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { unreadCount } = useNotifications(profile?.id)
 
   async function handleSignOut() {
@@ -149,7 +150,7 @@ export default function InvestorLayout() {
 
         {/* Page content */}
         <main className="flex-1 pb-20 lg:pb-0">
-          <Outlet />
+          <Outlet key={location.pathname} />
         </main>
       </div>
 

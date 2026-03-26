@@ -4,7 +4,7 @@ import { CheckCircle2, Loader2, ExternalLink, AlertCircle, X } from 'lucide-reac
 import type { TxStatus } from '../../hooks/useContractInteraction'
 
 const BSCSCAN = 'https://testnet.bscscan.com/tx/'
-const TARGET_CONFIRMATIONS = 3
+const TARGET_CONFIRMATIONS = 1
 
 interface Props {
   status:   TxStatus
