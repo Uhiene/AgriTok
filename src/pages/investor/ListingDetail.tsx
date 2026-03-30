@@ -277,7 +277,7 @@ export default function InvestorListingDetail() {
   )
 
   return (
-    <div className="min-h-screen bg-cream pb-28">
+    <div className="min-h-screen bg-cream pb-40 lg:pb-28">
 
       {/* ── Hero image ─────────────────────────────────────────── */}
       <div className="relative h-72 bg-gradient-to-br from-forest-mid/30 to-accent-green/20 overflow-hidden">
@@ -681,7 +681,7 @@ export default function InvestorListingDetail() {
       </div>
 
       {/* ── Sticky invest bar ───────────────────────────────────── */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[rgba(13,43,30,0.08)] shadow-[0_-4px_24px_rgba(13,43,30,0.08)]">
+      <div className="fixed bottom-16 lg:bottom-0 inset-x-0 z-30 bg-white border-t border-[rgba(13,43,30,0.08)] shadow-[0_-4px_24px_rgba(13,43,30,0.08)]">
         <div className="max-w-2xl mx-auto px-4 py-3">
           {isOpen ? (
             <div className="flex items-center gap-3">

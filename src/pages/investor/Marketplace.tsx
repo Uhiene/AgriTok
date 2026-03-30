@@ -9,7 +9,6 @@ import {
 import { getAllListings } from '../../lib/supabase/listings'
 import { fetchCommodityPrices } from '../../lib/api/commodities'
 import CropCard from '../../components/crops/CropCard'
-import NotificationBell from '../../components/notifications/NotificationBell'
 import type { CropListing } from '../../types'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -274,9 +273,8 @@ export default function Marketplace() {
       <div className="sticky top-0 z-20 bg-forest-dark px-5 pt-5 pb-4 space-y-4">
 
         {/* Title row */}
-        <div className="flex items-center justify-between">
+        <div>
           <h1 className="font-display text-3xl text-white">Planting</h1>
-          <NotificationBell />
         </div>
 
         {/* Tab switcher */}
@@ -355,7 +353,7 @@ export default function Marketplace() {
 
         {/* Loading initial skeletons */}
         {isLoading && (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5">
             {Array.from({ length: PAGE_SIZE }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
         )}
@@ -390,7 +388,7 @@ export default function Marketplace() {
         {/* Listings grid */}
         {!isLoading && visible.length > 0 && (
           <motion.div
-            className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5"
             initial="hidden"
             animate="visible"
             variants={{
@@ -402,6 +400,7 @@ export default function Marketplace() {
               <motion.div
                 key={listing.id}
                 layout
+                className="h-full"
                 variants={{
                   hidden:  { opacity: 0, y: 16 },
                   visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
@@ -422,7 +421,7 @@ export default function Marketplace() {
 
         {/* Loading more skeletons */}
         {hasMore && !isLoading && (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5 mt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5 mt-1">
             {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
         )}

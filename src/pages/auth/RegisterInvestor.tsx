@@ -110,16 +110,54 @@ export default function RegisterInvestor() {
       let userId: string
 
       if (useWallet && walletAddress) {
-        const tempPassword = crypto.randomUUID()
+        // Deterministic password so the same wallet can always sign back in
+        const tempPassword = `agritoken-wallet-${walletAddress.toLowerCase()}`
+        const walletEmail = `${walletAddress.toLowerCase()}@agritoken.wallet`
         const walletVals = values as WalletFormValues
         const { data, error } = await supabase.auth.signUp({
-          email: `${walletAddress.toLowerCase()}@agritoken.wallet`,
+          email: walletEmail,
           password: tempPassword,
           options: { data: { role: 'investor', full_name: walletVals.fullName } },
         })
-        if (error) throw error
-        if (!data.user) throw new Error('Registration failed')
-        userId = data.user.id
+        if (error?.message?.includes('already registered') || error?.status === 422) {
+          // Account already exists — try deterministic password first
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: walletEmail,
+            password: tempPassword,
+          })
+
+          if (signInError) {
+            // Account was created with old random UUID password — recover it
+            const recoverRes = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recover-wallet-account`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                },
+                body: JSON.stringify({ wallet_address: walletAddress }),
+              },
+            )
+            const recoverData = await recoverRes.json() as { recovered?: boolean; error?: string }
+            if (!recoverData.recovered) {
+              throw new Error('Unable to recover your wallet account. Please contact support.')
+            }
+            const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+              email: walletEmail,
+              password: tempPassword,
+            })
+            if (retryError || !retryData.user) throw new Error('Wallet account recovery failed. Please try again.')
+            userId = retryData.user.id
+          } else {
+            if (!signInData.user) throw new Error('Sign in failed. Please try again.')
+            userId = signInData.user.id
+          }
+        } else {
+          if (error) throw error
+          if (!data.user) throw new Error('Registration failed')
+          userId = data.user.id
+        }
       } else {
         const emailVals = values as FormValues
         const { data, error } = await supabase.auth.signUp({

@@ -24,6 +24,7 @@ import WeatherWidget from '../../components/weather/WeatherWidget'
 import NoteCard from '../../components/notes/NoteCard'
 import AddNoteModal from '../../components/notes/AddNoteModal'
 import CropAdvisory from '../../components/advisory/CropAdvisory'
+import FarmerOnboardingModal, { isStepDismissed } from '../../components/onboarding/FarmerOnboardingModal'
 import type { Farm, CropListing, FarmNote } from '../../types'
 
 // ── Weather query defaults (must match WeatherWidget) ─────────
@@ -128,6 +129,7 @@ export default function FarmerDashboard() {
   const queryClient = useQueryClient()
   const [showNoteModal, setShowNoteModal] = useState(false)
   const [raisedHighlight, setRaisedHighlight] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Farmer'
 
@@ -197,6 +199,23 @@ export default function FarmerDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [profile?.id, listings, queryClient])
 
+  // Onboarding: pick the first undismissed step based on current data
+  useEffect(() => {
+    if (farmsLoading || listingsLoading) return
+
+    let step: number | null = null
+    if (farms.length === 0 && !isStepDismissed(1)) {
+      step = 1
+    } else if (farms.length > 0 && listings.length === 0 && !isStepDismissed(2)) {
+      step = 2
+    } else if (listings.length > 0 && !isStepDismissed(3)) {
+      step = 3
+    } else if (!isStepDismissed(4)) {
+      step = 4
+    }
+    setOnboardingStep(step)
+  }, [farms, listings, farmsLoading, listingsLoading])
+
   // Computed stats
   const activeListings = listings.filter((l) => l.status === 'open').length
   const totalRaisedUsd = listings.reduce((s, l) => s + Number(l.amount_raised_usd ?? 0), 0)
@@ -206,6 +225,14 @@ export default function FarmerDashboard() {
 
   return (
     <div className="px-4 py-6 max-w-2xl mx-auto lg:max-w-4xl space-y-7">
+
+      {/* ── Onboarding modal ──────────────────────────────── */}
+      {onboardingStep !== null && (
+        <FarmerOnboardingModal
+          stepNumber={onboardingStep}
+          onDismiss={() => setOnboardingStep(null)}
+        />
+      )}
 
       {/* ── Greeting ──────────────────────────────────────── */}
       <div>
@@ -225,6 +252,7 @@ export default function FarmerDashboard() {
       />
 
       {/* ── AI Advisory ────────────────────────────────────── */}
+      <div id="ai" />
       {farms[0] && profile && (
         <CropAdvisory
           farm={farms[0]}

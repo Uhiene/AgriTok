@@ -9,7 +9,6 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useNotifications } from '../../hooks/useNotifications'
 import { signOut } from '../../lib/auth'
 import NotificationBell from '../notifications/NotificationBell'
 import logo from '../../assets/agritoken-logo.svg'
@@ -68,7 +67,7 @@ export default function InvestorLayout() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { unreadCount } = useNotifications(profile?.id)
+
 
   async function handleSignOut() {
     signOut()
@@ -96,21 +95,6 @@ export default function InvestorLayout() {
 
         {/* Bottom */}
         <div className="px-3 pb-6 space-y-1 border-t border-white/[0.06] pt-4">
-          <button
-            onClick={() => navigate('/notifications')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-card font-body text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all duration-200"
-          >
-            <div className="relative w-[18px] h-[18px]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-gold text-forest-dark text-[10px] font-bold flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </div>
-            Notifications
-          </button>
-
           <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-card font-body text-sm font-medium text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-200"

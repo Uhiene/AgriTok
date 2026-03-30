@@ -417,8 +417,18 @@ export default function NewListing() {
     // Use raw fetch with AbortSignal to bypass supabase-js internal auth queue
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token ?? supabaseKey
+
+    // Read token directly from localStorage — avoids the supabase-js auth queue
+    // which can hang after on-chain transactions
+    function getStoredAccessToken(): string | null {
+      try {
+        const key = Object.keys(localStorage).find((k) => k.endsWith('-auth-token'))
+        if (!key) return null
+        const parsed = JSON.parse(localStorage.getItem(key) ?? '{}') as { access_token?: string }
+        return parsed.access_token ?? null
+      } catch { return null }
+    }
+    const token = getStoredAccessToken() ?? supabaseKey
 
     console.log('[saveListing] fetching insert...')
     let res: Response

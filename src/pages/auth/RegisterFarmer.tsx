@@ -21,7 +21,6 @@ import {
   Lock,
 } from 'lucide-react'
 
-import { signUpWithEmail } from '../../lib/auth'
 import { upsertProfile } from '../../lib/supabase/profiles'
 import { supabase } from '../../lib/supabase/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -204,6 +203,15 @@ export default function RegisterFarmer() {
     return message
   }
 
+  function getStoredAccessToken(): string | null {
+    try {
+      const key = Object.keys(localStorage).find((k) => k.endsWith('-auth-token'))
+      if (!key) return null
+      const parsed = JSON.parse(localStorage.getItem(key) ?? '{}') as { access_token?: string }
+      return parsed.access_token ?? null
+    } catch { return null }
+  }
+
   async function onFinalSubmit() {
     setIsSubmitting(true)
     try {
@@ -213,16 +221,64 @@ export default function RegisterFarmer() {
 
       // ── Step A: create auth user ──────────────────────────
       if (isWalletFlow) {
-        const tempPassword = crypto.randomUUID()
-        await signUpWithEmail(
-          `${walletAddress!.toLowerCase()}@agritoken.wallet`,
-          tempPassword,
-          'farmer',
-          walletData.fullName,
-        )
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('Registration failed. Please try again.')
-        userId = user.id
+        const walletEmail = `${walletAddress!.toLowerCase()}@agritoken.wallet`
+        const tempPassword = `agritoken-wallet-${walletAddress!.toLowerCase()}`
+
+        const { data, error } = await supabase.auth.signUp({
+          email: walletEmail,
+          password: tempPassword,
+          options: { data: { role: 'farmer', full_name: walletData.fullName } },
+        })
+
+        if (error?.status === 422 || error?.message?.includes('already registered')) {
+          // Try with deterministic password first
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: walletEmail,
+            password: tempPassword,
+          })
+
+          if (signInError) {
+            // Account exists but was created with a different password (old random UUID).
+            // Call the recovery edge function to reset it to the deterministic password.
+            const recoverRes = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recover-wallet-account`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                },
+                body: JSON.stringify({ wallet_address: walletAddress }),
+              },
+            )
+            const recoverData = await recoverRes.json() as { recovered?: boolean; reason?: string; error?: string }
+
+            if (!recoverData.recovered) {
+              throw new Error('Unable to recover your wallet account. Please contact support.')
+            }
+
+            // Retry sign-in with deterministic password now that it's been reset
+            const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+              email: walletEmail,
+              password: tempPassword,
+            })
+            if (retryError || !retryData.user) throw new Error('Wallet account recovery failed. Please try again.')
+            userId = retryData.user.id
+          } else {
+            if (!signInData.user) throw new Error('Registration failed. Please try again.')
+            userId = signInData.user.id
+          }
+        } else {
+          if (error) throw error
+          if (!data.user) throw new Error('Registration failed. Please try again.')
+          userId = data.user.id
+
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: walletEmail,
+            password: tempPassword,
+          })
+          if (signInError) throw signInError
+        }
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: emailData.email,
@@ -274,7 +330,37 @@ export default function RegisterFarmer() {
         // Auth user exists via trigger — still proceed to dashboard
       }
 
-      // ── Step C: upload KYC docs (non-fatal if they fail) ──
+      // ── Step C: save farm from Step 2 ────────────────────
+      const farmValues = form2.getValues()
+      if (farmValues.farmName) {
+        try {
+          const token = getStoredAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/farms`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${token}`,
+                'Prefer': 'return=minimal',
+              },
+              body: JSON.stringify({
+                farmer_id: userId,
+                name: farmValues.farmName,
+                location_name: `${farmValues.farmRegion}, ${farmValues.farmCountry}`,
+                acreage: farmValues.farmSizeAcres,
+                soil_type: farmValues.primaryCrop,
+                verified: false,
+              }),
+            },
+          )
+        } catch (farmErr) {
+          console.warn('Farm save failed (non-fatal):', farmErr)
+        }
+      }
+
+      // ── Step E: upload KYC docs (non-fatal if they fail) ──
       try {
         let kycIdUrl: string | null = null
         let farmPhotoUrl: string | null = null

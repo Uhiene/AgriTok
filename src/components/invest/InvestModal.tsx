@@ -653,7 +653,7 @@ function PaymentStep({
   onBack: () => void
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<PayTab>('card')
+  const [tab, setTab] = useState<PayTab>('bnb')
   const totalUsd = tokenAmount * listing.price_per_token_usd
 
   return (
@@ -678,13 +678,13 @@ function PaymentStep({
       <div className="px-5 pt-4">
         <div className="flex gap-2 p-1 rounded-pill bg-[#F6F2E8]">
           {([
-            { id: 'card' as PayTab, label: 'Card', icon: CreditCard },
-            { id: 'bnb' as PayTab, label: 'BNB', icon: Coins },
-          ]).map(({ id, label, icon: Icon }) => (
+            { id: 'bnb' as PayTab, label: 'BNB', icon: Coins, recommended: true },
+            { id: 'card' as PayTab, label: 'Card', icon: CreditCard, recommended: false },
+          ]).map(({ id, label, icon: Icon, recommended }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex-1 h-9 rounded-pill text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 ${
+              className={`relative flex-1 h-9 rounded-pill text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 ${
                 tab === id
                   ? 'bg-white text-[#0D2B1E] shadow-sm'
                   : 'text-[#5A7A62] hover:text-[#0D2B1E]'
@@ -692,6 +692,11 @@ function PaymentStep({
             >
               <Icon size={14} />
               {label}
+              {recommended && (
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-[#F5C842] text-[#0D2B1E] font-body text-[8px] font-bold leading-none whitespace-nowrap">
+                  Recommended
+                </span>
+              )}
             </button>
           ))}
         </div>

@@ -10,6 +10,29 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   apiVersion: '2024-06-20',
 })
 
+// ── Email helper ──────────────────────────────────────────────────────────────
+
+async function sendEmail(
+  to: string,
+  template_name: string,
+  template_data: Record<string, string | number>,
+) {
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({ to, template_name, template_data }),
+    })
+    if (!res.ok) console.warn(`send-email ${res.status} for ${template_name}`)
+  } catch (err) {
+    console.warn('send-email call failed:', err)
+  }
+}
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -147,6 +170,40 @@ async function handlePaymentSucceeded(intent: Stripe.PaymentIntent) {
 
   const { error: notifError } = await supabase.from('notifications').insert(notifications)
   if (notifError) console.warn('Failed to insert notifications:', notifError)
+
+  // 5. Send transactional emails (non-fatal)
+  const [investorUser, farmerUser] = await Promise.allSettled([
+    supabase.auth.admin.getUserById(investor_id),
+    farmer_id ? supabase.auth.admin.getUserById(farmer_id) : Promise.resolve(null),
+  ])
+
+  const investorEmail =
+    investorUser.status === 'fulfilled' ? investorUser.value.data?.user?.email : undefined
+  const farmerEmail =
+    farmerUser.status === 'fulfilled' && farmerUser.value
+      ? (farmerUser.value as Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>).data?.user?.email
+      : undefined
+
+  const amountFmt = `$${amountUsd.toFixed(2)}`
+
+  if (investorEmail) {
+    await sendEmail(investorEmail, 'investmentConfirmed', {
+      investor: investorEmail.split('@')[0],
+      crop:     cropLabel,
+      tokens:   tokensCount,
+      amount:   amountFmt,
+    })
+  }
+
+  if (farmerEmail && farmer_id) {
+    const { data: farmerProfile } = await supabase
+      .from('profiles').select('full_name').eq('id', farmer_id).single()
+    await sendEmail(farmerEmail, 'newInvestorAlert', {
+      farmer: farmerProfile?.full_name ?? farmerEmail.split('@')[0],
+      crop:   cropLabel,
+      amount: amountFmt,
+    })
+  }
 
   console.log(`payment_intent.succeeded processed: ${intent.id}, listing: ${listing_id}`)
 }

@@ -6,7 +6,7 @@
 
 import Stripe from 'npm:stripe@17'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { createPublicClient, createWalletClient, http, parseEther } from 'npm:viem@2'
+import { createWalletClient, http } from 'npm:viem@2'
 import { privateKeyToAccount } from 'npm:viem/accounts'
 import { bscTestnet } from 'npm:viem@2/chains'
 
@@ -20,8 +20,42 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
+// ── Email helper ──────────────────────────────────────────────────────────────
+
+async function sendEmail(
+  to: string,
+  template_name: string,
+  template_data: Record<string, string | number>,
+) {
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({ to, template_name, template_data }),
+    })
+    if (!res.ok) console.warn(`send-email ${res.status} for ${template_name}`)
+  } catch (err) {
+    console.warn('send-email call failed:', err)
+  }
+}
+
 const FACTORY_ADDRESS = Deno.env.get('CROP_FACTORY_ADDRESS') as `0x${string}` | undefined
 const ADMIN_PRIVATE_KEY = Deno.env.get('CROP_FACTORY_PRIVATE_KEY') as `0x${string}` | undefined
+
+interface Investment {
+  id: string
+  investor_id: string
+  listing_id: string
+  tokens_purchased: number
+  amount_paid_usd: number
+  payment_method: string
+  transaction_hash: string | null
+  status: string
+}
 
 const FACTORY_ABI = [
   {
@@ -132,20 +166,22 @@ Deno.serve(async (req: Request) => {
     )
 
     // ── Fetch all confirmed investments ──────────────────────────────────────
-    const { data: investments, error: invError } = await supabase
+    const { data: rawInvestments, error: invError } = await supabase
       .from('investments')
       .select('*')
       .eq('listing_id', listing_id)
       .eq('status', 'confirmed')
 
     if (invError) throw invError
-    if (!investments || investments.length === 0) {
+    if (!rawInvestments || rawInvestments.length === 0) {
       return json({ error: 'No confirmed investments found for this listing' }, 422)
     }
 
+    const investments = rawInvestments as Investment[]
+
     // ── Calculate payouts ────────────────────────────────────────────────────
     // Each investor gets: principal + (principal × expected_return_percent / 100 × yieldRatio)
-    const payouts = investments.map((inv) => {
+    const payouts = investments.map((inv: Investment) => {
       const principal = inv.amount_paid_usd as number
       const grossProfit = (principal * listing.expected_return_percent) / 100
       const adjustedProfit = grossProfit * yieldRatio
@@ -228,7 +264,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Update all confirmed investments → paid_out ──────────────────────────
-    const investmentIds = investments.map((i) => i.id as string)
+    const investmentIds = investments.map((i: Investment) => i.id)
 
     const { error: updateError } = await supabase
       .from('investments')
@@ -260,7 +296,7 @@ Deno.serve(async (req: Request) => {
     // ── Send payout notifications to all investors ────────────────────────────
     const cropLabel = `${listing.crop_type.charAt(0).toUpperCase()}${listing.crop_type.slice(1)}`
 
-    const notificationRows = payouts.map(({ investment, totalPayout, profit }) => ({
+    const notificationRows = payouts.map(({ investment, totalPayout, profit }: { investment: Investment; totalPayout: number; profit: number }) => ({
       user_id: investment.investor_id as string,
       title: 'Harvest Payout Received',
       message:
@@ -277,13 +313,30 @@ Deno.serve(async (req: Request) => {
 
     if (notifError) console.warn('Failed to insert payout notifications:', notifError)
 
+    // ── Send payout emails to all investors ───────────────────────────────────
+    await Promise.allSettled(
+      payouts.map(async ({ investment, totalPayout }: { investment: Investment; totalPayout: number }) => {
+        try {
+          const { data: { user } } = await supabase.auth.admin.getUserById(investment.investor_id)
+          if (!user?.email) return
+          await sendEmail(user.email, 'payoutSent', {
+            investor: user.email.split('@')[0],
+            amount:   `$${totalPayout.toFixed(2)}`,
+            crop:     cropLabel,
+          })
+        } catch (err) {
+          console.warn(`Payout email failed for investor ${investment.investor_id}:`, err)
+        }
+      }),
+    )
+
     // ── Response ──────────────────────────────────────────────────────────────
     return json({
       success: true,
       listing_id,
       yield_ratio: yieldRatio,
       investments_processed: investments.length,
-      total_paid_out_usd: payouts.reduce((sum, p) => sum + p.totalPayout, 0),
+      total_paid_out_usd: payouts.reduce((sum: number, p: { totalPayout: number }) => sum + p.totalPayout, 0),
       results,
       errors: errors.length > 0 ? errors : undefined,
     })
