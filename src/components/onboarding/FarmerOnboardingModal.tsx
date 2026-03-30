@@ -112,19 +112,19 @@ export default function FarmerOnboardingModal({ stepNumber, onDismiss }: Props) 
   const config = STEPS.find((s) => s.step === stepNumber)
   if (!config) return null
 
-  const Icon = config.icon
+  const { icon: Icon, ctaPath, iconBg, iconColor, badge, title, body, cta, skipLabel } = config
 
   function handleCta() {
     dismissStep(stepNumber)
     onDismiss()
-    if (config.ctaPath.includes('#')) {
-      const [path, hash] = config.ctaPath.split('#')
+    if (ctaPath.includes('#')) {
+      const [path, hash] = ctaPath.split('#')
       navigate(path)
       setTimeout(() => {
         document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' })
       }, 300)
     } else {
-      navigate(config.ctaPath)
+      navigate(ctaPath)
     }
   }
 
@@ -181,21 +181,21 @@ export default function FarmerOnboardingModal({ stepNumber, onDismiss }: Props) 
 
             {/* Icon + badge */}
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl ${config.iconBg} flex items-center justify-center flex-shrink-0`}>
-                <Icon size={22} strokeWidth={1.75} className={config.iconColor} />
+              <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={22} strokeWidth={1.75} className={iconColor} />
               </div>
               <span className="font-body text-xs font-semibold text-text-muted uppercase tracking-wider">
-                {config.badge}
+                {badge}
               </span>
             </div>
 
             {/* Text */}
             <div className="space-y-2">
               <h2 className="font-display text-2xl text-forest-dark leading-snug">
-                {config.title}
+                {title}
               </h2>
               <p className="font-body text-sm text-text-muted leading-relaxed">
-                {config.body}
+                {body}
               </p>
             </div>
 
@@ -221,14 +221,14 @@ export default function FarmerOnboardingModal({ stepNumber, onDismiss }: Props) 
                 onClick={handleCta}
                 className="w-full h-12 rounded-pill bg-forest-dark text-white font-body text-sm font-semibold flex items-center justify-center gap-2 hover:bg-forest-mid transition-colors"
               >
-                {config.cta}
+                {cta}
                 <ArrowRight size={15} strokeWidth={2.5} />
               </button>
               <button
                 onClick={handleSkip}
                 className="w-full h-10 rounded-pill font-body text-sm text-text-muted hover:text-forest-dark hover:bg-forest-dark/[0.04] transition-colors"
               >
-                {config.skipLabel}
+                {skipLabel}
               </button>
             </div>
 

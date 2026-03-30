@@ -15,6 +15,7 @@ const Login            = lazy(() => import('./pages/auth/Login'))
 const Register         = lazy(() => import('./pages/auth/Register'))
 const RegisterFarmer   = lazy(() => import('./pages/auth/RegisterFarmer'))
 const RegisterInvestor = lazy(() => import('./pages/auth/RegisterInvestor'))
+const AuthCallback     = lazy(() => import('./pages/auth/AuthCallback'))
 
 // Farmer
 const FarmerDashboard = lazy(() => import('./pages/farmer/FarmerDashboard'))
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
   { path: '/register',          element: <S><Register /></S> },
   { path: '/register/farmer',   element: <S><RegisterFarmer /></S> },
   { path: '/register/investor', element: <S><RegisterInvestor /></S> },
+  { path: '/auth/callback',     element: <S><AuthCallback /></S> },
 
   // ── Protected (any authenticated user) ───────────────────
   {

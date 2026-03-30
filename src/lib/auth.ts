@@ -46,7 +46,7 @@ export async function signInWithGoogle(): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/register`,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   })
   if (error) throw error
@@ -108,19 +108,22 @@ export function onAuthStateChange(): () => void {
       let profile = await getProfile(user.id).catch(() => null)
 
       if (!profile) {
-        // New OAuth user — seed profile from user metadata
+        // New OAuth user — AuthCallback page will handle role assignment.
+        // Only auto-seed if role is already in metadata (email/wallet flows).
         const meta = user.user_metadata as {
           role?: UserRole
           full_name?: string
           name?: string
         }
-        profile = await upsertProfile({
-          id: user.id,
-          role: meta.role ?? 'investor',
-          full_name: meta.full_name ?? meta.name ?? '',
-          avatar_url: user.user_metadata?.avatar_url ?? null,
-          kyc_status: 'pending',
-        }).catch(() => null)
+        if (meta.role) {
+          profile = await upsertProfile({
+            id: user.id,
+            role: meta.role,
+            full_name: meta.full_name ?? meta.name ?? '',
+            avatar_url: user.user_metadata?.avatar_url ?? null,
+            kyc_status: 'pending',
+          }).catch(() => null)
+        }
       }
 
       if (profile) setProfile(profile)
