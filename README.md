@@ -1,6 +1,6 @@
 # AgriTok — Tokenized Crop Financing on BNB Chain
 
-> Empowering smallholder farmers to raise funding by tokenizing future harvests as Real World Assets (RWA) on BNB Chain — and enabling global investors to fund them in exchange for profit share at harvest time.
+> Empowering smallholder farmers to raise funding by tokenizing future harvests as Real World Assets (RWA) on BNB Chain and enabling global investors to fund them in exchange for profit share at harvest time.
 
 Built for **RWA Demo Day — BNB Chain Track, HK Web3 Festival 2026**
 
@@ -55,7 +55,7 @@ AgriTok bridges the gap between smallholder farmers in emerging markets and glob
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/agritoken.git
+git clone https://github.com/Uhiene/AgriTok
 cd agritoken
 npm install
 ```

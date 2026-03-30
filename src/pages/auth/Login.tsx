@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Loader2, Eye, EyeOff, Mail, Lock, Wallet } from 'lucide-react'
 
 import { signInWithEmail, signInWithGoogle } from '../../lib/auth'
+import logo from '../../assets/agritoken-logo.svg'
 import { getProfileByWallet } from '../../lib/supabase/profiles'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -132,9 +133,7 @@ export default function Login() {
         {/* Content */}
         <div className="relative z-10 space-y-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-lg bg-accent-green flex items-center justify-center">
-              <span className="text-forest-dark font-bold text-sm font-body">AT</span>
-            </div>
+            <img src={logo} alt="AgriTok" className="h-9 w-auto" />
             <span className="text-white font-semibold text-lg font-body tracking-wide">
               AgriTok
             </span>
@@ -171,9 +170,7 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-accent-green flex items-center justify-center">
-              <span className="text-forest-dark font-bold text-xs font-body">AT</span>
-            </div>
+            <img src={logo} alt="AgriTok" className="h-8 w-auto" />
             <span className="font-body font-semibold text-forest-dark text-base">AgriTok</span>
           </div>
 
