@@ -553,7 +553,7 @@ export default function NewListing() {
           parseEther(priceInBnb.toFixed(18)),
           BigInt(harvestTs),
         ],
-        gas: 500000n,
+        gas: 3_000_000n,
       })
       console.log('[handleFinalSubmit] tx hash:', hash)
       setMintTxHash(hash)

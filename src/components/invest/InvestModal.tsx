@@ -10,7 +10,6 @@ import {
   useReadContract,
 } from 'wagmi'
 import { bscTestnet } from 'wagmi/chains'
-import { parseEther } from 'viem'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import confetti from 'canvas-confetti'
 import {
@@ -486,15 +485,15 @@ function CryptoTab({
 
   function handleBuy() {
     if (!listing.token_contract_address) return
-    // Prefer exact on-chain price; fall back to CoinGecko conversion if not yet loaded
-    const valueWei = exactValueWei ?? (bnbAmount ? parseEther(bnbAmount.toFixed(18) as `${number}`) : null)
-    if (!valueWei) return
+    // Always use the exact on-chain price — CoinGecko is display-only.
+    // A single wei mismatch causes the contract to revert with "wrong msg.value".
+    if (!exactValueWei) return
     writeContract({
       address: FACTORY_ADDRESS,
       abi: FACTORY_ABI,
       functionName: 'buyTokens',
       args: [listing.token_contract_address as `0x${string}`, BigInt(tokenAmount)],
-      value: valueWei,
+      value: exactValueWei,
       gas: 300000n,
     })
   }
@@ -611,13 +610,18 @@ function CryptoTab({
 
       <button
         onClick={handleBuy}
-        disabled={isPending || isConfirming || isSaving || !(exactValueWei ?? bnbAmount)}
+        disabled={isPending || isConfirming || isSaving || !exactValueWei}
         className="w-full h-12 rounded-pill bg-[#0D2B1E] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1A5C38] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isPending || isConfirming ? (
           <>
             <Loader2 size={16} className="animate-spin" />
             {isPending ? 'Confirm in wallet...' : 'Confirming...'}
+          </>
+        ) : !exactValueWei ? (
+          <>
+            <Loader2 size={16} className="animate-spin" />
+            Loading price...
           </>
         ) : (
           <>
