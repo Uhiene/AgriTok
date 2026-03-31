@@ -495,6 +495,7 @@ function CryptoTab({
       functionName: 'buyTokens',
       args: [listing.token_contract_address as `0x${string}`, BigInt(tokenAmount)],
       value: valueWei,
+      gas: 300000n,
     })
   }
 

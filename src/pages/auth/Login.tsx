@@ -65,6 +65,19 @@ export default function Login() {
     }
   }, [profile, navigate])
 
+  // Auto-login when wallet is already connected and has a known profile
+  useEffect(() => {
+    if (!isConnected || !address || profile) return
+    let cancelled = false
+    getProfileByWallet(address).then((found) => {
+      if (cancelled || !found) return
+      setProfile(found)
+      setWalletAddress(address)
+      navigate(found.role === 'farmer' ? '/farmer/dashboard' : '/investor/dashboard', { replace: true })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [isConnected, address, profile, navigate, setProfile, setWalletAddress])
+
   // ── Email sign-in ─────────────────────────────────────────
   async function onEmailSubmit(values: EmailFormValues) {
     setIsSubmitting(true)
@@ -311,12 +324,49 @@ export default function Login() {
                 )}
                 {isGoogleLoading ? 'Redirecting...' : 'Continue with Google'}
               </button>
+
+              {/* Wallet connect — recommended for Web3 */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('wallet')}
+                className="w-full flex items-center gap-3 py-3 px-4 rounded-card border-2 border-[rgba(245,200,66,0.4)] bg-[rgba(245,200,66,0.05)] hover:bg-[rgba(245,200,66,0.1)] transition-all duration-200 group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-[rgba(245,200,66,0.15)] flex items-center justify-center flex-shrink-0 group-hover:bg-[rgba(245,200,66,0.25)] transition-colors">
+                  <Wallet size={16} className="text-[#A8860A]" strokeWidth={1.75} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-body text-sm font-semibold text-forest-dark leading-tight">Connect Wallet</p>
+                  <p className="font-body text-xs text-text-muted mt-0.5">MetaMask, Trust Wallet, WalletConnect</p>
+                </div>
+                <span className="flex-shrink-0 text-[10px] font-body font-semibold text-[#A8860A] bg-gold/20 px-2 py-0.5 rounded-pill tracking-wide">
+                  WEB3
+                </span>
+              </button>
             </div>
           )}
 
           {/* ── Wallet tab ───────────────────────────────── */}
           {activeTab === 'wallet' && (
             <div className="space-y-6">
+              {/* MetaMask recommendation banner */}
+              <div className="flex items-start gap-3 p-3 rounded-card bg-gold/10 border border-gold/30">
+                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 mt-0.5">
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
+                    alt="MetaMask"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div>
+                  <p className="font-body text-xs font-semibold text-forest-dark">
+                    MetaMask Recommended
+                  </p>
+                  <p className="font-body text-xs text-text-muted mt-0.5 leading-relaxed">
+                    Install MetaMask for the best BNB Chain experience. Your wallet becomes your account — no password needed.
+                  </p>
+                </div>
+              </div>
+
               <p className="font-body text-sm text-text-muted leading-relaxed">
                 Connect your MetaMask, Trust Wallet, or any WalletConnect wallet to
                 access your account or create a new one.

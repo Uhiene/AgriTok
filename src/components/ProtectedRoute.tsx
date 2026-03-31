@@ -10,8 +10,8 @@ export default function ProtectedRoute() {
 
   const hasPersistedProfile = !!profile
 
+  // Still resolving session on first load — show spinner only if nothing cached
   if (isLoading && !hasPersistedProfile) {
-    // Genuinely first load with no cached session — show spinner
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-accent-green border-t-transparent animate-spin" />
@@ -19,10 +19,12 @@ export default function ProtectedRoute() {
     )
   }
 
-  if (!isAuthenticated && !hasPersistedProfile) {
+  // Auth resolved and user is not authenticated — always redirect to login
+  if (!isLoading && !isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
+  // No profile (signed out or profile cleared) — redirect to login
   if (!profile) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
