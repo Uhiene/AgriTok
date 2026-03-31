@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,10 +12,10 @@ import {
   Upload, X, Search, FileText, Save, AlertCircle, ExternalLink,
   Coins, Eye,
 } from 'lucide-react'
-import { useAccount, useWriteContract, useChainId, useSwitchChain } from 'wagmi'
+import { useAccount, useWriteContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi'
 import { bscTestnet } from 'wagmi/chains'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { parseEther, parseEventLogs, createPublicClient, http, fallback } from 'viem'
+import { parseEther, parseEventLogs } from 'viem'
 
 import { useAuth } from '../../hooks/useAuth'
 import { getFarmsByFarmer } from '../../lib/supabase/farms'
@@ -238,8 +238,9 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 // ── Main ──────────────────────────────────────────────────────
 
 export default function NewListing() {
-  const navigate   = useNavigate()
-  const { profile } = useAuth()
+  const navigate     = useNavigate()
+  const { profile }  = useAuth()
+  const queryClient  = useQueryClient()
 
   // ── Step state
   const [step, setStep] = useState(1)
@@ -275,6 +276,7 @@ export default function NewListing() {
   const chainId                = useChainId()
   const { switchChainAsync }   = useSwitchChain()
   const { writeContractAsync } = useWriteContract()
+  const publicClient           = usePublicClient()
 
   // Live BNB/USD price for wei conversion (fallback: $600)
   const { data: bnbPrice = 600 } = useQuery({
@@ -479,6 +481,8 @@ export default function NewListing() {
 
     localStorage.removeItem(DRAFT_KEY)
     toast.success('Crop listing created successfully')
+    void queryClient.invalidateQueries({ queryKey: ['farmer-listings'] })
+    void queryClient.invalidateQueries({ queryKey: ['all-open-listings'] })
     navigate(`/farmer/listings/${listing.id}`)
   }
 
@@ -549,22 +553,16 @@ export default function NewListing() {
           parseEther(priceInBnb.toFixed(18)),
           BigInt(harvestTs),
         ],
+        gas: 500000n,
       })
       console.log('[handleFinalSubmit] tx hash:', hash)
       setMintTxHash(hash)
       setMintStep('confirming')
 
-      // 4. Wait for receipt using reliable public RPCs with fallback
+      // 4. Wait for receipt via wagmi publicClient (uses the same CORS-safe transport)
       console.log('[handleFinalSubmit] waiting for receipt...')
-      const bscClient = createPublicClient({
-        chain:     bscTestnet,
-        transport: fallback([
-          http('https://bsc-testnet-rpc.publicnode.com'),
-          http('https://bsc-testnet.bnbchain.org'),
-          http('https://endpoints.omniatech.io/v1/bsc/testnet/public'),
-        ]),
-      })
-      const receipt = await bscClient.waitForTransactionReceipt({ hash, confirmations: 1 })
+      if (!publicClient) throw new Error('No RPC client available')
+      const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
       console.log('[handleFinalSubmit] receipt received', receipt.transactionHash)
 
       // 5. Extract CropToken contract address from event

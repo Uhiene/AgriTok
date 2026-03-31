@@ -26,7 +26,7 @@ const wagmiConfig = getDefaultConfig({
     [bscTestnet.id]: fallback([
       http('https://bsc-testnet-rpc.publicnode.com'),
       http('https://bsc-testnet.bnbchain.org'),
-      http('https://endpoints.omniatech.io/v1/bsc/testnet/public'),
+      http('https://data-seed-prebsc-1-s1.binance.org:8545'),
     ]),
   },
 })
@@ -88,9 +88,12 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({ onError: handleQueryError }),
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
+      staleTime: 0,           // always treat cached data as stale — refetch in bg on every mount
+      gcTime: 1000 * 60 * 5, // keep unused data in memory for 5 min so navigating back is instant
       retry: 1,
       retryDelay: 500,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
     },
   },
 })
